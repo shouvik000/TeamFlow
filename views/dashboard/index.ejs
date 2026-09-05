@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Dashboard | TeamFlow</title>
+
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+
+    <div class="auth-container">
+
+        <div class="auth-card">
+
+            <h1>Welcome to TeamFlow 🚀</h1>
+
+            <% if (user) { %>
+
+                <p>
+                    Hello, <strong><%= user.name %></strong>
+                </p>
+
+                <p>
+                    Organization ID:
+                    <strong><%= user.organizationId %></strong>
+                </p>
+
+                <p>
+                    Role:
+                    <strong><%= user.role %></strong>
+                </p>
+
+            <% } else { %>
+
+                <p>You are not logged in.</p>
+
+            <% } %>
+
+        </div>
+
+    </div>
+
+</body>
+</html>
