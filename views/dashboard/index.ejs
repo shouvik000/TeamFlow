@@ -1,12 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
     <title>Dashboard | TeamFlow</title>
 
     <link rel="stylesheet" href="/css/style.css">
+
 </head>
 
 <body>
@@ -15,33 +22,66 @@
 
         <div class="auth-card">
 
-            <h1>Welcome to TeamFlow 🚀</h1>
+            <h1>TeamFlow 🚀</h1>
 
-            <% if (user) { %>
+            <h2>Dashboard</h2>
 
-                <p>
-                    Hello, <strong><%= user.name %></strong>
-                </p>
 
-                <p>
-                    Organization ID:
-                    <strong><%= user.organizationId %></strong>
-                </p>
+            <p>
+                Welcome,
+                <strong>
+                    <%= user.name %>
+                </strong>
+            </p>
 
-                <p>
-                    Role:
-                    <strong><%= user.role %></strong>
-                </p>
 
-            <% } else { %>
+            <p>
+                Email:
+                <strong>
+                    <%= user.email %>
+                </strong>
+            </p>
 
-                <p>You are not logged in.</p>
 
-            <% } %>
+            <p>
+                Organization:
+                <strong>
+                    <%= user.organizationName %>
+                </strong>
+            </p>
+
+
+            <p>
+                Organization ID:
+                <strong>
+                    <%= user.organizationId %>
+                </strong>
+            </p>
+
+
+            <p>
+                Role:
+                <strong>
+                    <%= user.role %>
+                </strong>
+            </p>
+
+
+            <form
+                action="/auth/logout"
+                method="POST"
+            >
+
+                <button type="submit">
+                    Logout
+                </button>
+
+            </form>
 
         </div>
 
     </div>
 
 </body>
+
 </html>

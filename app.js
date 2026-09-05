@@ -8,6 +8,11 @@ require("dotenv").config();
 const pool = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
 
+
+
+const { isAuthenticated } = require("./middleware/authMiddleware");
+
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -85,7 +90,11 @@ app.use("/auth", authRoutes);
 
 app.get("/", (req, res) => {
 
-    res.redirect("/auth/register");
+    if (req.session.user) {
+        return res.redirect("/dashboard");
+    }
+
+    res.redirect("/auth/login");
 
 });
 
@@ -94,15 +103,17 @@ app.get("/", (req, res) => {
 // DASHBOARD ROUTE
 // ============================================
 
-app.get("/dashboard", (req, res) => {
+app.get(
+    "/dashboard",
+    isAuthenticated,
+    (req, res) => {
 
-    res.render("dashboard/index", {
+        res.render("dashboard/index", {
+            user: req.session.user
+        });
 
-        user: req.session.user || null
-
-    });
-
-});
+    }
+);
 
 
 // ============================================
