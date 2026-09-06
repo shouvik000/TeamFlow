@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Invite Member | TeamFlow</title>
+
+    <link
+        rel="stylesheet"
+        href="/css/style.css"
+    >
+
+</head>
+
+<body>
+
+    <div class="auth-container">
+
+        <div class="auth-card">
+
+            <h1>
+                Invite Team Member
+            </h1>
+
+            <p>
+                Organization:
+                <strong>
+                    <%= organization.name %>
+                </strong>
+            </p>
+
+
+            <form
+                action="/organizations/invite"
+                method="POST"
+            >
+
+                <div class="form-group">
+
+                    <label for="email">
+                        Email
+                    </label>
+
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        placeholder="member@example.com"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="role">
+                        Role
+                    </label>
+
+                    <select
+                        id="role"
+                        name="role"
+                        required
+                    >
+
+                        <option value="MEMBER">
+                            Member
+                        </option>
+
+                        <option value="VIEWER">
+                            Viewer
+                        </option>
+
+                        <option value="ADMIN">
+                            Admin
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <button type="submit">
+                    Send Invitation
+                </button>
+
+            </form>
+
+
+            <p class="auth-footer">
+
+                <a href="/organizations/members">
+                    ← Back to Members
+                </a>
+
+            </p>
+
+        </div>
+
+    </div>
+
+</body>
+
+</html>

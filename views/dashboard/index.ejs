@@ -12,7 +12,10 @@
 
     <title>Dashboard | TeamFlow</title>
 
-    <link rel="stylesheet" href="/css/style.css">
+    <link
+        rel="stylesheet"
+        href="/css/style.css"
+    >
 
 </head>
 
@@ -27,45 +30,178 @@
             <h2>Dashboard</h2>
 
 
+            <!-- ================================= -->
+            <!-- CURRENT USER -->
+            <!-- ================================= -->
+
+            <div>
+
+                <p>
+                    Welcome,
+                    <strong>
+                        <%= user.name %>
+                    </strong>
+                </p>
+
+                <p>
+                    Email:
+                    <strong>
+                        <%= user.email %>
+                    </strong>
+                </p>
+
+                <p>
+                    Current Organization:
+                    <strong>
+                        <%= user.organizationName %>
+                    </strong>
+                </p>
+
+                <p>
+                    Current Role:
+                    <strong>
+                        <%= user.role %>
+                    </strong>
+                </p>
+
+            </div>
+
+
+            <hr>
+
+
+            <!-- ================================= -->
+            <!-- PENDING INVITATIONS -->
+            <!-- ================================= -->
+
+            <h2>
+                Pending Invitations
+            </h2>
+
+
+            <% if (
+                invitations &&
+                invitations.length > 0
+            ) { %>
+
+
+                <% invitations.forEach(invitation => { %>
+
+
+                    <div
+                        style="
+                            border: 1px solid #ddd;
+                            padding: 15px;
+                            margin-top: 15px;
+                            border-radius: 8px;
+                        "
+                    >
+
+                        <h3>
+                            <%= invitation.organization_name %>
+                        </h3>
+
+
+                        <p>
+                            You've been invited to join
+                            this organization.
+                        </p>
+
+
+                        <p>
+                            Email:
+                            <strong>
+                                <%= invitation.email %>
+                            </strong>
+                        </p>
+
+
+                        <p>
+                            Role:
+                            <strong>
+                                <%= invitation.role %>
+                            </strong>
+                        </p>
+
+
+                        <p>
+                            Expires:
+                            <%= new Date(
+                                invitation.expires_at
+                            ).toLocaleString() %>
+                        </p>
+
+
+                        <form
+                            action="/organizations/invite/accept"
+                            method="POST"
+                        >
+
+                            <input
+                                type="hidden"
+                                name="invitationId"
+                                value="<%= invitation.id %>"
+                            >
+
+
+                            <button
+                                type="submit"
+                            >
+                                Accept Invitation
+                            </button>
+
+                        </form>
+
+                    </div>
+
+
+                <% }); %>
+
+
+            <% } else { %>
+
+                <p>
+                    You don't have any pending invitations.
+                </p>
+
+            <% } %>
+
+
+            <hr>
+
+
+            <!-- ================================= -->
+            <!-- NAVIGATION -->
+            <!-- ================================= -->
+
             <p>
-                Welcome,
-                <strong>
-                    <%= user.name %>
-                </strong>
+
+                <a href="/projects">
+                    Projects
+                </a>
+
             </p>
 
 
             <p>
-                Email:
-                <strong>
-                    <%= user.email %>
-                </strong>
+
+                <% if (
+                    user.role === "OWNER" ||
+                    user.role === "ADMIN"
+                ) { %>
+
+                    <a href="/organizations/members">
+                        Team Members
+                    </a>
+
+                <% } %>
+
             </p>
 
 
-            <p>
-                Organization:
-                <strong>
-                    <%= user.organizationName %>
-                </strong>
-            </p>
-
-
-            <p>
-                Organization ID:
-                <strong>
-                    <%= user.organizationId %>
-                </strong>
-            </p>
-
-
-            <p>
-                Role:
-                <strong>
-                    <%= user.role %>
-                </strong>
-            </p>
-
+            <!-- ================================= -->
+            <!-- LOGOUT -->
+            <!-- ================================= -->
 
             <form
                 action="/auth/logout"

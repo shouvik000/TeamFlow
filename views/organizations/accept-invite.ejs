@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Accept Invitation | TeamFlow</title>
+
+    <link
+        rel="stylesheet"
+        href="/css/style.css"
+    >
+
+</head>
+
+<body>
+
+    <div class="auth-container">
+
+        <div class="auth-card">
+
+            <h1>
+                TeamFlow
+            </h1>
+
+            <h2>
+                You're invited!
+            </h2>
+
+            <p>
+                Organization:
+                <strong>
+                    <%= invitation.organization_name %>
+                </strong>
+            </p>
+
+            <p>
+                Email:
+                <strong>
+                    <%= invitation.email %>
+                </strong>
+            </p>
+
+            <p>
+                Role:
+                <strong>
+                    <%= invitation.role %>
+                </strong>
+            </p>
+
+
+            <form
+                action="/organizations/invite/accept"
+                method="POST"
+            >
+
+                <input
+                    type="hidden"
+                    name="token"
+                    value="<%= token %>"
+                >
+
+                <% if (user) { %>
+
+                    <button type="submit">
+                        Accept Invitation
+                    </button>
+
+                <% } else { %>
+
+                    <p>
+                        Please login with the invited
+                        email address first.
+                    </p>
+
+                    <a href="/auth/login">
+                        Login
+                    </a>
+
+                <% } %>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</body>
+
+</html>

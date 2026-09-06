@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Team Members | TeamFlow</title>
+
+    <link
+        rel="stylesheet"
+        href="/css/style.css"
+    >
+
+</head>
+
+<body>
+
+    <div class="auth-container">
+
+        <div class="auth-card">
+
+            <h1>
+                <%= organization.name %>
+            </h1>
+
+            <h2>
+                Team Members
+            </h2>
+
+
+            <% if (
+                user.role === "OWNER" ||
+                user.role === "ADMIN"
+            ) { %>
+
+                <p>
+
+                    <a href="/organizations/invite">
+                        + Invite Member
+                    </a>
+
+                </p>
+
+            <% } %>
+
+
+            <% if (members.length === 0) { %>
+
+                <p>
+                    No members found.
+                </p>
+
+            <% } %>
+
+
+            <% members.forEach(member => { %>
+
+                <div
+                    style="
+                        border: 1px solid #ddd;
+                        padding: 15px;
+                        margin-top: 15px;
+                        border-radius: 8px;
+                    "
+                >
+
+                    <h3>
+                        <%= member.name %>
+                    </h3>
+
+                    <p>
+                        Email:
+                        <%= member.email %>
+                    </p>
+
+                    <p>
+                        Role:
+                        <strong>
+                            <%= member.role %>
+                        </strong>
+                    </p>
+
+                </div>
+
+            <% }); %>
+
+
+            <p class="auth-footer">
+
+                <a href="/dashboard">
+                    ← Dashboard
+                </a>
+
+            </p>
+
+        </div>
+
+    </div>
+
+</body>
+
+</html>

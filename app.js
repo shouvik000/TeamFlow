@@ -10,6 +10,9 @@ const authRoutes = require("./routes/authRoutes");
 const projectRoutes =
     require("./routes/projectRoutes");
 
+    const organizationRoutes =
+    require("./routes/organizationRoutes");
+
 
 
 const { isAuthenticated } = require("./middleware/authMiddleware");
@@ -128,7 +131,16 @@ app.use((req, res, next) => {
 
 
 app.use("/auth", authRoutes);
+
+
+
 app.use("/projects", projectRoutes);
+
+
+app.use(
+    "/organizations",
+    organizationRoutes
+);
 
 
 
@@ -162,17 +174,53 @@ app.get("/", (req, res) => {
 // DASHBOARD ROUTE
 
 
-app.get(
-    "/dashboard",
-    isAuthenticated,
-    (req, res) => {
+app.get("/dashboard", async (req, res) => {
+
+    if (!req.session || !req.session.user) {
+        return res.redirect("/auth/login");
+    }
+
+    try {
+
+        const user = req.session.user;
+
+        // Find pending invitations for this user's email
+        const invitationResult = await pool.query(
+            `
+            SELECT
+                i.id,
+                i.email,
+                i.role,
+                i.expires_at,
+                o.name AS organization_name
+            FROM invitations i
+            JOIN organizations o
+                ON o.id = i.organization_id
+            WHERE LOWER(i.email) = LOWER($1)
+              AND i.accepted_at IS NULL
+              AND i.expires_at > NOW()
+            ORDER BY i.created_at DESC
+            `,
+            [user.email]
+        );
 
         res.render("dashboard/index", {
-            user: req.session.user
+            user: user,
+            invitations: invitationResult.rows
         });
 
+    } catch (error) {
+
+        console.error(
+            "Dashboard error:",
+            error
+        );
+
+        res.status(500).send(
+            "Failed to load dashboard"
+        );
     }
-);
+});
 
 
 
