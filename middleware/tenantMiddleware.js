@@ -1,5 +1,6 @@
 
 
+
 const pool = require("../config/db");
 
 
@@ -16,12 +17,16 @@ exports.loadOrganization = async (req, res, next) => {
             return res.redirect("/auth/login");
         }
 
-        const organizationId = req.session.user.organizationId;
+        const organizationId =
+            req.session.user.organizationId;
 
-        // Get organization
         const result = await pool.query(
             `
-            SELECT id, name, owner_id, created_at
+            SELECT
+                id,
+                name,
+                owner_id,
+                created_at
             FROM organizations
             WHERE id = $1
             `,
@@ -29,17 +34,13 @@ exports.loadOrganization = async (req, res, next) => {
         );
 
         if (result.rows.length === 0) {
-
             return res.status(404).send(
                 "Organization not found"
             );
-
         }
 
-        // Attach organization to request
         req.organization = result.rows[0];
 
-        // Make available to EJS
         res.locals.organization = result.rows[0];
 
         next();
@@ -59,9 +60,7 @@ exports.loadOrganization = async (req, res, next) => {
 
 
 
-
-
-// Role authorization middleware
+// Role authorization
 
 
 exports.requireRole = (...allowedRoles) => {
@@ -72,14 +71,18 @@ exports.requireRole = (...allowedRoles) => {
             return res.redirect("/auth/login");
         }
 
-        const userRole = req.session.user.role;
+        const userRole =
+            req.session.user.role;
 
         if (!allowedRoles.includes(userRole)) {
 
-            return res.status(403).send(
-                "You do not have permission to perform this action"
+            return res.status(403).render(
+                "errors/403",
+                {
+                    user: req.session.user,
+                    allowedRoles
+                }
             );
-
         }
 
         next();

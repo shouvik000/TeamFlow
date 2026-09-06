@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Access Denied | TeamFlow</title>
+
+    <link rel="stylesheet" href="/css/style.css">
+
+</head>
+
+<body>
+
+    <div class="auth-container">
+
+        <div class="auth-card">
+
+            <h1>403</h1>
+
+            <h2>Access Denied</h2>
+
+            <p>
+                You do not have permission to perform this action.
+            </p>
+
+            <p>
+                Your current role:
+                <strong>
+                    <%= user.role %>
+                </strong>
+            </p>
+
+            <p>
+                <a href="/dashboard">
+                    ← Back to Dashboard
+                </a>
+            </p>
+
+        </div>
+
+    </div>
+
+</body>
+
+</html>

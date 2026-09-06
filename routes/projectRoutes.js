@@ -5,6 +5,8 @@ const express = require("express");
 
 const router = express.Router();
 
+const ROLES = require("../utils/roles");
+
 const projectController =
     require("../controllers/projectController");
 
@@ -13,12 +15,14 @@ const {
 } = require("../middleware/authMiddleware");
 
 const {
-    loadOrganization
+    loadOrganization,
+    requireRole
 } = require("../middleware/tenantMiddleware");
 
 
 
-// Project routes
+// View projects
+// OWNER / ADMIN / MEMBER / VIEWER
 
 
 router.get(
@@ -29,18 +33,33 @@ router.get(
 );
 
 
+
+// Create project page
+// OWNER / ADMIN
+
+
 router.get(
     "/create",
     isAuthenticated,
     loadOrganization,
+    requireRole(
+        ROLES.OWNER,
+        ROLES.ADMIN
+    ),
     projectController.showCreateProject
 );
+
+
+
+// Create project
+// OWNER / ADMIN
 
 
 router.post(
     "/create",
     isAuthenticated,
     loadOrganization,
+    requireRole("OWNER", "ADMIN"),
     projectController.createProject
 );
 
