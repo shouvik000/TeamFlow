@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Projects | TeamFlow</title>
+
+    <link rel="stylesheet" href="/css/style.css">
+
+</head>
+
+
+<body>
+
+    <div class="auth-container">
+
+        <div class="auth-card">
+
+            <h1>
+                <%= organization.name %>
+            </h1>
+
+            <h2>Projects</h2>
+
+
+            <p>
+                Total Projects:
+                <strong>
+                    <%= projects.length %>
+                </strong>
+            </p>
+
+
+            <p>
+                <a href="/projects/create">
+                    + Create Project
+                </a>
+            </p>
+
+
+            <% if (projects.length === 0) { %>
+
+                <p>
+                    No projects created yet.
+                </p>
+
+            <% } %>
+
+
+            <% projects.forEach(project => { %>
+
+                <div
+                    style="
+                        border: 1px solid #ddd;
+                        padding: 15px;
+                        margin-top: 15px;
+                        border-radius: 8px;
+                    "
+                >
+
+                    <h3>
+                        <%= project.name %>
+                    </h3>
+
+
+                    <p>
+                        <%= project.description || "No description" %>
+                    </p>
+
+
+                    <p>
+                        Status:
+                        <strong>
+                            <%= project.status %>
+                        </strong>
+                    </p>
+
+
+                    <p>
+                        Created by:
+                        <%= project.created_by_name %>
+                    </p>
+
+                </div>
+
+            <% }) %>
+
+
+            <p class="auth-footer">
+
+                <a href="/dashboard">
+                    ← Dashboard
+                </a>
+
+            </p>
+
+        </div>
+
+    </div>
+
+</body>
+
+</html>

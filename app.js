@@ -7,6 +7,8 @@ require("dotenv").config();
 
 const pool = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
+const projectRoutes =
+    require("./routes/projectRoutes");
 
 
 
@@ -17,33 +19,60 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 
-// ============================================
-// EJS CONFIGURATION
-// ============================================
+
+
+
+
+
+
+
+  // EJS CONFIGURATION
 
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
 
-// ============================================
+
+
+
+
+
+
+
+
 // GENERAL MIDDLEWARE
-// ============================================
+
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 
-// ============================================
+
+
+
+
+
+
+
+
+
+
 // STATIC FILES
-// ============================================
 
 app.use(express.static(path.join(__dirname, "public")));
 
 
-// ============================================
+
+
+
+
+
+
+
+
 // SESSION MIDDLEWARE
 // IMPORTANT: Must come BEFORE routes
-// ============================================
+
 
 app.use(
     session({
@@ -65,9 +94,17 @@ app.use(
 );
 
 
-// ============================================
+
+
+
+
+
+
+
+
+
 // MAKE USER AVAILABLE TO ALL EJS FILES
-// ============================================
+
 
 app.use((req, res, next) => {
 
@@ -77,16 +114,34 @@ app.use((req, res, next) => {
 });
 
 
-// ============================================
+
+
+
+
+
+
+
+
+
+
 // AUTH ROUTES
-// ============================================
+
 
 app.use("/auth", authRoutes);
+app.use("/projects", projectRoutes);
 
 
-// ============================================
+
+
+
+
+
+
+
+
+
 // HOME ROUTE
-// ============================================
+
 
 app.get("/", (req, res) => {
 
@@ -99,9 +154,13 @@ app.get("/", (req, res) => {
 });
 
 
-// ============================================
+
+
+
+
+
 // DASHBOARD ROUTE
-// ============================================
+
 
 app.get(
     "/dashboard",
@@ -116,9 +175,13 @@ app.get(
 );
 
 
-// ============================================
+
+
+
+
+
 // DATABASE TEST ROUTE
-// ============================================
+
 
 app.get("/db-test", async (req, res) => {
 
@@ -151,6 +214,14 @@ app.get("/db-test", async (req, res) => {
     }
 
 });
+
+
+
+
+
+
+
+
 
 
 //db-info
@@ -190,9 +261,9 @@ app.get("/db-info", async (req, res) => {
 
 
 
-// ============================================
+
 // 404 ROUTE
-// ============================================
+
 
 app.use((req, res) => {
 
@@ -201,9 +272,11 @@ app.use((req, res) => {
 });
 
 
-// ============================================
-// START SERVER
-// ============================================
+
+
+
+
+
 
 app.listen(PORT, () => {
 
