@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        Create Task | TeamFlow
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="/css/style.css"
+    >
+
+</head>
+
+
+<body>
+
+    <div class="auth-container">
+
+        <div class="auth-card">
+
+            <h1>
+                Create Task
+            </h1>
+
+
+            <p>
+
+                Project:
+
+                <strong>
+                    <%= project.name %>
+                </strong>
+
+            </p>
+
+
+            <form
+                action="/projects/<%= project.id %>/tasks/create"
+                method="POST"
+            >
+
+                <!-- Task title -->
+
+                <div class="form-group">
+
+                    <label for="title">
+                        Task Title
+                    </label>
+
+                    <input
+                        type="text"
+                        id="title"
+                        name="title"
+                        placeholder="Example: Build login API"
+                        required
+                    >
+
+                </div>
+
+
+                <!-- Description -->
+
+                <div class="form-group">
+
+                    <label for="description">
+                        Description
+                    </label>
+
+                    <textarea
+                        id="description"
+                        name="description"
+                        rows="5"
+                        placeholder="Describe the task..."
+                    ></textarea>
+
+                </div>
+
+
+                <!-- Priority -->
+
+                <div class="form-group">
+
+                    <label for="priority">
+                        Priority
+                    </label>
+
+                    <select
+                        id="priority"
+                        name="priority"
+                    >
+
+                        <option value="LOW">
+                            Low
+                        </option>
+
+                        <option
+                            value="MEDIUM"
+                            selected
+                        >
+                            Medium
+                        </option>
+
+                        <option value="HIGH">
+                            High
+                        </option>
+
+                        <option value="URGENT">
+                            Urgent
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <!-- Assignee -->
+
+                <div class="form-group">
+
+                    <label for="assignedTo">
+                        Assign To
+                    </label>
+
+                    <select
+                        id="assignedTo"
+                        name="assignedTo"
+                    >
+
+                        <option value="">
+                            Unassigned
+                        </option>
+
+
+                        <% members.forEach(member => { %>
+
+                            <option
+                                value="<%= member.id %>"
+                            >
+
+                                <%= member.name %>
+                                -
+                                <%= member.role %>
+
+                            </option>
+
+                        <% }); %>
+
+                    </select>
+
+                </div>
+
+
+                <!-- Due date -->
+
+                <div class="form-group">
+
+                    <label for="dueDate">
+                        Due Date
+                    </label>
+
+                    <input
+                        type="date"
+                        id="dueDate"
+                        name="dueDate"
+                    >
+
+                </div>
+
+
+                <button type="submit">
+                    Create Task
+                </button>
+
+            </form>
+
+
+            <p class="auth-footer">
+
+                <a
+                    href="/projects/<%= project.id %>/tasks"
+                >
+                    ← Back to Tasks
+                </a>
+
+            </p>
+
+        </div>
+
+    </div>
+
+</body>
+
+</html>

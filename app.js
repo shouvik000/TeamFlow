@@ -13,6 +13,9 @@ const projectRoutes =
     const organizationRoutes =
     require("./routes/organizationRoutes");
 
+  const taskRoutes =
+    require("./routes/taskRoutes");  
+
 
 
 const { isAuthenticated } = require("./middleware/authMiddleware");
@@ -141,6 +144,11 @@ app.use(
     "/organizations",
     organizationRoutes
 );
+
+
+app.use("/", taskRoutes);
+
+
 
 
 

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        Tasks | TeamFlow
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="/css/style.css"
+    >
+
+</head>
+
+
+<body>
+
+    <div class="auth-container">
+
+        <div class="auth-card">
+
+            <h1>
+                <%= project.name %>
+            </h1>
+
+            <h2>
+                Tasks
+            </h2>
+
+
+            <p>
+
+                <a
+                    href="/projects/<%= project.id %>/tasks/create"
+                >
+                    + Create Task
+                </a>
+
+            </p>
+
+
+            <hr>
+
+
+            <% if (tasks.length === 0) { %>
+
+                <p>
+                    No tasks created yet.
+                </p>
+
+            <% } %>
+
+
+            <% tasks.forEach(task => { %>
+
+                <div
+                    style="
+                        border: 1px solid #ddd;
+                        padding: 15px;
+                        margin-top: 15px;
+                        border-radius: 8px;
+                    "
+                >
+
+                    <h3>
+                        <%= task.title %>
+                    </h3>
+
+
+                    <p>
+                        <%= task.description || "No description" %>
+                    </p>
+
+
+                    <p>
+                        Status:
+                        <strong>
+                            <%= task.status %>
+                        </strong>
+                    </p>
+
+
+                    <p>
+                        Priority:
+                        <strong>
+                            <%= task.priority %>
+                        </strong>
+                    </p>
+
+
+                    <p>
+
+                        Assigned to:
+
+                        <strong>
+
+                            <%= task.assignee_name
+                                || "Unassigned" %>
+
+                        </strong>
+
+                    </p>
+
+
+                    <p>
+
+                        Due date:
+
+                        <strong>
+
+                            <%= task.due_date
+                                || "No due date" %>
+
+                        </strong>
+
+                    </p>
+
+
+                    <p>
+
+                        Created by:
+
+                        <%= task.creator_name %>
+
+                    </p>
+
+                </div>
+
+            <% }); %>
+
+
+            <p class="auth-footer">
+
+                <a href="/projects">
+                    ← Back to Projects
+                </a>
+
+            </p>
+
+        </div>
+
+    </div>
+
+</body>
+
+</html>

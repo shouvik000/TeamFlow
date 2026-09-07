@@ -68,8 +68,17 @@
                     <h3>
                         <%= project.name %>
                     </h3>
+                      
 
+                    <p>
 
+                          <a href="/projects/<%= project.id %>/tasks">
+                             View Tasks
+                          </a>
+
+                     </p>
+
+                     
                     <p>
                         <%= project.description || "No description" %>
                     </p>
