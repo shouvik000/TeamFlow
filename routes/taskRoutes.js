@@ -1,3 +1,4 @@
+
 const express = require("express");
 
 const router = express.Router();
@@ -10,12 +11,14 @@ const {
 } = require("../middleware/authMiddleware");
 
 const {
-    loadOrganization
+    loadOrganization,
+    requireRole
 } = require("../middleware/tenantMiddleware");
 
 
 // ============================================
-// View project tasks
+// View tasks
+// All organization members
 // ============================================
 
 router.get(
@@ -28,25 +31,71 @@ router.get(
 
 // ============================================
 // Create task page
+// OWNER / ADMIN / MEMBER
 // ============================================
 
 router.get(
     "/projects/:projectId/tasks/create",
     isAuthenticated,
     loadOrganization,
+    requireRole("OWNER", "ADMIN", "MEMBER"),
     taskController.showCreateTask
 );
 
 
 // ============================================
 // Create task
+// OWNER / ADMIN / MEMBER
 // ============================================
 
 router.post(
     "/projects/:projectId/tasks/create",
     isAuthenticated,
     loadOrganization,
+    requireRole("OWNER", "ADMIN", "MEMBER"),
     taskController.createTask
+);
+
+
+// ============================================
+// Edit task page
+// OWNER / ADMIN / MEMBER
+// ============================================
+
+router.get(
+    "/tasks/:taskId/edit",
+    isAuthenticated,
+    loadOrganization,
+    requireRole("OWNER", "ADMIN", "MEMBER"),
+    taskController.showEditTask
+);
+
+
+// ============================================
+// Update task
+// OWNER / ADMIN / MEMBER
+// ============================================
+
+router.post(
+    "/tasks/:taskId/edit",
+    isAuthenticated,
+    loadOrganization,
+    requireRole("OWNER", "ADMIN", "MEMBER"),
+    taskController.updateTask
+);
+
+
+// ============================================
+// Delete task
+// OWNER / ADMIN only
+// ============================================
+
+router.post(
+    "/tasks/:taskId/delete",
+    isAuthenticated,
+    loadOrganization,
+    requireRole("OWNER", "ADMIN"),
+    taskController.deleteTask
 );
 
 

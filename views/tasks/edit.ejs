@@ -1,0 +1,235 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Edit Task | TeamFlow</title>
+
+    <link
+        rel="stylesheet"
+        href="/css/style.css"
+    >
+
+</head>
+
+<body>
+
+    <div class="auth-container">
+
+        <div class="auth-card">
+
+            <h1>Edit Task</h1>
+
+            <p>
+                Project:
+                <strong>
+                    <%= task.project_name %>
+                </strong>
+            </p>
+
+
+            <form
+                action="/tasks/<%= task.id %>/edit"
+                method="POST"
+            >
+
+                <div class="form-group">
+
+                    <label for="title">
+                        Task Title
+                    </label>
+
+                    <input
+                        type="text"
+                        id="title"
+                        name="title"
+                        value="<%= task.title %>"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="description">
+                        Description
+                    </label>
+
+                    <textarea
+                        id="description"
+                        name="description"
+                        rows="5"
+                    ><%= task.description || "" %></textarea>
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="status">
+                        Status
+                    </label>
+
+                    <select
+                        id="status"
+                        name="status"
+                    >
+
+                        <option
+                            value="TODO"
+                            <%= task.status === "TODO" ? "selected" : "" %>
+                        >
+                            TODO
+                        </option>
+
+                        <option
+                            value="IN_PROGRESS"
+                            <%= task.status === "IN_PROGRESS" ? "selected" : "" %>
+                        >
+                            IN PROGRESS
+                        </option>
+
+                        <option
+                            value="REVIEW"
+                            <%= task.status === "REVIEW" ? "selected" : "" %>
+                        >
+                            REVIEW
+                        </option>
+
+                        <option
+                            value="DONE"
+                            <%= task.status === "DONE" ? "selected" : "" %>
+                        >
+                            DONE
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="priority">
+                        Priority
+                    </label>
+
+                    <select
+                        id="priority"
+                        name="priority"
+                    >
+
+                        <option
+                            value="LOW"
+                            <%= task.priority === "LOW" ? "selected" : "" %>
+                        >
+                            LOW
+                        </option>
+
+                        <option
+                            value="MEDIUM"
+                            <%= task.priority === "MEDIUM" ? "selected" : "" %>
+                        >
+                            MEDIUM
+                        </option>
+
+                        <option
+                            value="HIGH"
+                            <%= task.priority === "HIGH" ? "selected" : "" %>
+                        >
+                            HIGH
+                        </option>
+
+                        <option
+                            value="URGENT"
+                            <%= task.priority === "URGENT" ? "selected" : "" %>
+                        >
+                            URGENT
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="assignedTo">
+                        Assigned To
+                    </label>
+
+                    <select
+                        id="assignedTo"
+                        name="assignedTo"
+                    >
+
+                        <option value="">
+                            Unassigned
+                        </option>
+
+                        <% members.forEach(member => { %>
+
+                            <option
+                                value="<%= member.id %>"
+                                <%= Number(task.assigned_to) === Number(member.id) ? "selected" : "" %>
+                            >
+                                <%= member.name %>
+                                -
+                                <%= member.role %>
+                            </option>
+
+                        <% }); %>
+
+                    </select>
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="dueDate">
+                        Due Date
+                    </label>
+
+                    <input
+                        type="date"
+                        id="dueDate"
+                        name="dueDate"
+                        value="<%= task.due_date || "" %>"
+                    >
+
+                </div>
+
+
+                <button type="submit">
+                    Update Task
+                </button>
+
+            </form>
+
+
+            <p class="auth-footer">
+
+                <a href="/projects/<%= task.project_id %>/tasks">
+                    ← Back to Tasks
+                </a>
+
+            </p>
+
+        </div>
+
+    </div>
+
+</body>
+
+</html>

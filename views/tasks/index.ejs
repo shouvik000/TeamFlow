@@ -133,6 +133,34 @@
 
                     </p>
 
+
+                    <p>
+
+    <a href="/tasks/<%= task.id %>/edit">
+        Edit Task
+    </a>
+
+</p>
+
+<% if (
+    user.role === "OWNER" ||
+    user.role === "ADMIN"
+) { %>
+
+    <form
+        action="/tasks/<%= task.id %>/delete"
+        method="POST"
+        onsubmit="return confirm('Are you sure you want to delete this task?');"
+    >
+
+        <button type="submit">
+            Delete Task
+        </button>
+
+    </form>
+
+   <% } %>
+
                 </div>
 
             <% }); %>
