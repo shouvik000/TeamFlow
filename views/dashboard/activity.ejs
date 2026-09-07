@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Activity | TeamFlow</title>
+
+    <link
+        rel="stylesheet"
+        href="/css/style.css"
+    >
+
+</head>
+
+<body>
+
+    <div class="auth-container">
+
+        <div class="auth-card">
+
+            <h1>
+                Team Activity
+            </h1>
+
+            <p>
+                Organization:
+                <strong>
+                    <%= organization.name %>
+                </strong>
+            </p>
+
+            <hr>
+
+            <% if (activities.length === 0) { %>
+
+                <p>
+                    No activity yet.
+                </p>
+
+            <% } %>
+
+
+            <% activities.forEach(activity => { %>
+
+                <div
+                    style="
+                        border: 1px solid #ddd;
+                        padding: 15px;
+                        margin-top: 15px;
+                        border-radius: 8px;
+                    "
+                >
+
+                    <strong>
+                        <%= activity.user_name || "System" %>
+                    </strong>
+
+                    <p>
+                        <%= activity.description %>
+                    </p>
+
+                    <small>
+                        <%= new Date(
+                            activity.created_at
+                        ).toLocaleString() %>
+                    </small>
+
+                </div>
+
+            <% }) %>
+
+
+            <p class="auth-footer">
+
+                <a href="/dashboard">
+                    ← Dashboard
+                </a>
+
+            </p>
+
+        </div>
+
+    </div>
+
+</body>
+
+</html>

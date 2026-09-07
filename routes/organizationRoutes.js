@@ -5,6 +5,10 @@ const router = express.Router();
 const organizationController =
     require("../controllers/organizationController");
 
+const activityController =
+    require("../controllers/activityController");
+
+
 const {
     isAuthenticated
 } = require("../middleware/authMiddleware");
@@ -64,6 +68,15 @@ router.get(
     organizationController.showAcceptInvitation
 );
 
+
+
+
+router.get(
+    "/activity",
+    isAuthenticated,
+    loadOrganization,
+    activityController.getActivities
+);
 
 // ============================================
 // Accept invitation
