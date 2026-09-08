@@ -34,8 +34,11 @@ router.get(
 
 
 
-// Create project page
+/*
+Create project page
 // OWNER / ADMIN
+
+*/
 
 
 router.get(
