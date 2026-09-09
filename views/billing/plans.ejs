@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        Plans | TeamFlow
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="/css/style.css"
+    >
+
+</head>
+
+
+<body>
+
+    <div class="auth-container">
+
+        <div class="auth-card">
+
+            <h1>
+                TeamFlow Plans
+            </h1>
+
+
+            <% if (subscription) { %>
+
+                <p>
+                    Current Plan:
+                    <strong>
+                        <%= subscription.plan_name %>
+                    </strong>
+                </p>
+
+                <p>
+                    Status:
+                    <strong>
+                        <%= subscription.status %>
+                    </strong>
+                </p>
+
+            <% } %>
+
+
+            <hr>
+
+
+            <% plans.forEach(plan => { %>
+
+                <div
+                    style="
+                        border: 1px solid #ddd;
+                        padding: 20px;
+                        margin-top: 20px;
+                        border-radius: 8px;
+                    "
+                >
+
+                    <h2>
+                        <%= plan.name %>
+                    </h2>
+
+
+                    <h3>
+                        $<%= plan.price_monthly %>
+                        / month
+                    </h3>
+
+
+                    <p>
+
+                        Projects:
+
+                        <strong>
+                            <%= plan.max_projects === null
+                                ? "Unlimited"
+                                : plan.max_projects %>
+                        </strong>
+
+                    </p>
+
+
+                    <p>
+
+                        Members:
+
+                        <strong>
+                            <%= plan.max_members === null
+                                ? "Unlimited"
+                                : plan.max_members %>
+                        </strong>
+
+                    </p>
+
+
+                    <p>
+
+                        Tasks:
+
+                        <strong>
+                            <%= plan.max_tasks === null
+                                ? "Unlimited"
+                                : plan.max_tasks %>
+                        </strong>
+
+                    </p>
+
+
+                    <% if (
+                        subscription &&
+                        subscription.plan_name === plan.name
+                    ) { %>
+
+                        <button disabled>
+                            Current Plan
+                        </button>
+
+                    <% } else { %>
+
+                        <button disabled>
+                            Upgrade
+                        </button>
+
+                    <% } %>
+
+                </div>
+
+            <% }); %>
+
+
+            <p class="auth-footer">
+
+                <a href="/dashboard">
+                    ← Dashboard
+                </a>
+
+            </p>
+
+        </div>
+
+    </div>
+
+</body>
+
+</html>

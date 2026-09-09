@@ -20,6 +20,11 @@ const {
 } = require("../middleware/tenantMiddleware");
 
 
+const {
+    checkProjectLimit
+} = require("../middleware/subscriptionMiddleware");
+
+
 
 // View projects
 // OWNER / ADMIN / MEMBER / VIEWER
@@ -63,6 +68,7 @@ router.post(
     isAuthenticated,
     loadOrganization,
     requireRole("OWNER", "ADMIN"),
+    checkProjectLimit,
     projectController.createProject
 );
 

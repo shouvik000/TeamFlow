@@ -16,6 +16,9 @@ const projectRoutes =
   const taskRoutes =
     require("./routes/taskRoutes");  
 
+    const subscriptionRoutes =
+    require("./routes/subscriptionRoutes");
+
 
 
 const { isAuthenticated } = require("./middleware/authMiddleware");
@@ -143,6 +146,12 @@ app.use("/projects", projectRoutes);
 app.use(
     "/organizations",
     organizationRoutes
+);
+
+
+app.use(
+    "/billing",
+    subscriptionRoutes
 );
 
 

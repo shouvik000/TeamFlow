@@ -229,3 +229,37 @@ exports.logout = (req, res) => {
         res.redirect("/auth/login");
     });
 };
+
+
+// Get FREE plan
+const freePlanResult = await client.query(
+    `
+    SELECT id
+    FROM plans
+    WHERE name = 'FREE'
+    `
+);
+
+if (freePlanResult.rows.length === 0) {
+    throw new Error("FREE plan not found");
+}
+
+const freePlanId = freePlanResult.rows[0].id;
+
+
+// Create subscription
+await client.query(
+    `
+    INSERT INTO subscriptions
+    (
+        organization_id,
+        plan_id,
+        status
+    )
+    VALUES ($1, $2, 'ACTIVE')
+    `,
+    [
+        organization.id,
+        freePlanId
+    ]
+);
