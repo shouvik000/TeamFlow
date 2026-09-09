@@ -19,6 +19,11 @@ const {
 } = require("../middleware/tenantMiddleware");
 
 
+const {
+    checkMemberLimit
+} = require("../middleware/subscriptionMiddleware");
+
+
 // ============================================
 // Members
 // ============================================
@@ -55,6 +60,7 @@ router.post(
     isAuthenticated,
     loadOrganization,
     requireRole("OWNER", "ADMIN"),
+    checkMemberLimit,
     organizationController.createInvitation
 );
 

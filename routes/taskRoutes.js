@@ -15,6 +15,10 @@ const {
     requireRole
 } = require("../middleware/tenantMiddleware");
 
+const {
+    checkTaskLimit
+} = require("../middleware/subscriptionMiddleware");
+
 
 // ============================================
 // View tasks
@@ -53,6 +57,7 @@ router.post(
     isAuthenticated,
     loadOrganization,
     requireRole("OWNER", "ADMIN", "MEMBER"),
+    checkTaskLimit,
     taskController.createTask
 );
 

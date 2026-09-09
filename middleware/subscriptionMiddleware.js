@@ -1,4 +1,31 @@
-const pool = require("../config/db");
+const {
+    getOrganizationSubscription,
+    getOrganizationUsage
+} = require("../services/subscriptionService");
+
+
+// ============================================
+// Get subscription safely
+// ============================================
+
+const loadBillingData = async (req) => {
+
+    const organizationId =
+        req.session.user.organizationId;
+
+    const subscription =
+        await getOrganizationSubscription(
+            organizationId
+        );
+
+    if (!subscription) {
+        throw new Error(
+            "Organization has no subscription"
+        );
+    }
+
+    return subscription;
+};
 
 
 // ============================================
@@ -13,45 +40,16 @@ exports.checkProjectLimit = async (
 
     try {
 
-        const organizationId =
-            req.session.user.organizationId;
-
-
-        // Get plan limit
-        const subscriptionResult =
-            await pool.query(
-                `
-                SELECT
-                    p.max_projects,
-                    p.name AS plan_name
-
-                FROM subscriptions s
-
-                JOIN plans p
-                    ON p.id = s.plan_id
-
-                WHERE s.organization_id = $1
-                `,
-                [organizationId]
-            );
-
-
-        if (
-            subscriptionResult.rows.length === 0
-        ) {
-
-            return res.status(403).send(
-                "No active subscription found"
-            );
-
-        }
-
-
         const subscription =
-            subscriptionResult.rows[0];
+            await loadBillingData(req);
+
+        const usage =
+            await getOrganizationUsage(
+                req.session.user.organizationId
+            );
 
 
-        // NULL means unlimited
+        // NULL = unlimited
         if (
             subscription.max_projects === null
         ) {
@@ -61,26 +59,8 @@ exports.checkProjectLimit = async (
         }
 
 
-        // Count projects
-        const projectResult =
-            await pool.query(
-                `
-                SELECT COUNT(*)::INTEGER AS count
-
-                FROM projects
-
-                WHERE organization_id = $1
-                `,
-                [organizationId]
-            );
-
-
-        const projectCount =
-            projectResult.rows[0].count;
-
-
         if (
-            projectCount >=
+            usage.project_count >=
             subscription.max_projects
         ) {
 
@@ -96,12 +76,130 @@ exports.checkProjectLimit = async (
     } catch (error) {
 
         console.error(
-            "Project subscription check error:",
+            "Project limit error:",
             error
         );
 
         res.status(500).send(
-            "Failed to check subscription"
+            "Failed to check project limit"
+        );
+    }
+};
+
+
+// ============================================
+// Check member limit
+// ============================================
+
+exports.checkMemberLimit = async (
+    req,
+    res,
+    next
+) => {
+
+    try {
+
+        const subscription =
+            await loadBillingData(req);
+
+        const usage =
+            await getOrganizationUsage(
+                req.session.user.organizationId
+            );
+
+
+        // NULL = unlimited
+        if (
+            subscription.max_members === null
+        ) {
+
+            return next();
+
+        }
+
+
+        if (
+            usage.member_count >=
+            subscription.max_members
+        ) {
+
+            return res.status(403).send(
+                `Your ${subscription.plan_name} plan allows only ${subscription.max_members} member(s). Please upgrade your plan.`
+            );
+
+        }
+
+
+        next();
+
+    } catch (error) {
+
+        console.error(
+            "Member limit error:",
+            error
+        );
+
+        res.status(500).send(
+            "Failed to check member limit"
+        );
+    }
+};
+
+
+// ============================================
+// Check task limit
+// ============================================
+
+exports.checkTaskLimit = async (
+    req,
+    res,
+    next
+) => {
+
+    try {
+
+        const subscription =
+            await loadBillingData(req);
+
+        const usage =
+            await getOrganizationUsage(
+                req.session.user.organizationId
+            );
+
+
+        // NULL = unlimited
+        if (
+            subscription.max_tasks === null
+        ) {
+
+            return next();
+
+        }
+
+
+        if (
+            usage.task_count >=
+            subscription.max_tasks
+        ) {
+
+            return res.status(403).send(
+                `Your ${subscription.plan_name} plan allows only ${subscription.max_tasks} task(s). Please upgrade your plan.`
+            );
+
+        }
+
+
+        next();
+
+    } catch (error) {
+
+        console.error(
+            "Task limit error:",
+            error
+        );
+
+        res.status(500).send(
+            "Failed to check task limit"
         );
     }
 };

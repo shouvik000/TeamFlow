@@ -10,9 +10,7 @@
         content="width=device-width, initial-scale=1.0"
     >
 
-    <title>
-        Plans | TeamFlow
-    </title>
+    <title>Plans | TeamFlow</title>
 
     <link
         rel="stylesheet"
@@ -21,22 +19,24 @@
 
 </head>
 
-
 <body>
 
     <div class="auth-container">
 
         <div class="auth-card">
 
-            <h1>
-                TeamFlow Plans
-            </h1>
+            <h1>TeamFlow Plans</h1>
 
+            <!-- ============================= -->
+            <!-- CURRENT SUBSCRIPTION -->
+            <!-- ============================= -->
+
+            <h2>Current Plan</h2>
 
             <% if (subscription) { %>
 
                 <p>
-                    Current Plan:
+                    Plan:
                     <strong>
                         <%= subscription.plan_name %>
                     </strong>
@@ -49,93 +49,174 @@
                     </strong>
                 </p>
 
+            <% } else { %>
+
+                <p>
+                    No active subscription found.
+                </p>
+
             <% } %>
 
 
             <hr>
 
 
-            <% plans.forEach(plan => { %>
+            <!-- ============================= -->
+            <!-- CURRENT USAGE -->
+            <!-- ============================= -->
 
-                <div
-                    style="
-                        border: 1px solid #ddd;
-                        padding: 20px;
-                        margin-top: 20px;
-                        border-radius: 8px;
-                    "
-                >
+            <% if (subscription && usage) { %>
 
-                    <h2>
-                        <%= plan.name %>
-                    </h2>
+                <h2>Current Usage</h2>
 
-
-                    <h3>
-                        $<%= plan.price_monthly %>
-                        / month
-                    </h3>
-
-
-                    <p>
-
-                        Projects:
-
-                        <strong>
-                            <%= plan.max_projects === null
-                                ? "Unlimited"
-                                : plan.max_projects %>
-                        </strong>
-
-                    </p>
+                <p>
+                    Projects:
+                    <strong>
+                        <%= usage.project_count %>
+                    </strong>
+                    /
+                    <strong>
+                        <%= subscription.max_projects === null
+                            ? "Unlimited"
+                            : subscription.max_projects %>
+                    </strong>
+                </p>
 
 
-                    <p>
-
-                        Members:
-
-                        <strong>
-                            <%= plan.max_members === null
-                                ? "Unlimited"
-                                : plan.max_members %>
-                        </strong>
-
-                    </p>
-
-
-                    <p>
-
-                        Tasks:
-
-                        <strong>
-                            <%= plan.max_tasks === null
-                                ? "Unlimited"
-                                : plan.max_tasks %>
-                        </strong>
-
-                    </p>
+                <p>
+                    Members:
+                    <strong>
+                        <%= usage.member_count %>
+                    </strong>
+                    /
+                    <strong>
+                        <%= subscription.max_members === null
+                            ? "Unlimited"
+                            : subscription.max_members %>
+                    </strong>
+                </p>
 
 
-                    <% if (
-                        subscription &&
-                        subscription.plan_name === plan.name
-                    ) { %>
+                <p>
+                    Tasks:
+                    <strong>
+                        <%= usage.task_count %>
+                    </strong>
+                    /
+                    <strong>
+                        <%= subscription.max_tasks === null
+                            ? "Unlimited"
+                            : subscription.max_tasks %>
+                    </strong>
+                </p>
 
-                        <button disabled>
-                            Current Plan
-                        </button>
+            <% } %>
 
-                    <% } else { %>
 
-                        <button disabled>
-                            Upgrade
-                        </button>
+            <hr>
 
-                    <% } %>
 
-                </div>
+            <!-- ============================= -->
+            <!-- AVAILABLE PLANS -->
+            <!-- ============================= -->
 
-            <% }); %>
+            <h2>Available Plans</h2>
+
+
+            <% if (plans && plans.length > 0) { %>
+
+                <% plans.forEach(function(plan) { %>
+
+                    <div
+                        style="
+                            border: 1px solid #ddd;
+                            padding: 20px;
+                            margin-top: 20px;
+                            border-radius: 8px;
+                        "
+                    >
+
+                        <h2>
+                            <%= plan.name %>
+                        </h2>
+
+
+                        <h3>
+                            $<%= Number(plan.price_monthly).toFixed(2) %>
+                            / month
+                        </h3>
+
+
+                        <p>
+                            Projects:
+                            <strong>
+                                <%= plan.max_projects === null
+                                    ? "Unlimited"
+                                    : plan.max_projects %>
+                            </strong>
+                        </p>
+
+
+                        <p>
+                            Members:
+                            <strong>
+                                <%= plan.max_members === null
+                                    ? "Unlimited"
+                                    : plan.max_members %>
+                            </strong>
+                        </p>
+
+
+                        <p>
+                            Tasks:
+                            <strong>
+                                <%= plan.max_tasks === null
+                                    ? "Unlimited"
+                                    : plan.max_tasks %>
+                            </strong>
+                        </p>
+
+
+                        <% if (
+                            subscription &&
+                            subscription.plan_name === plan.name
+                        ) { %>
+
+                            <div
+                                style="
+                                    display: inline-block;
+                                    padding: 10px 16px;
+                                    border-radius: 6px;
+                                    background: #e5e7eb;
+                                    color: #111827;
+                                    font-weight: bold;
+                                "
+                            >
+                                ✓ Current Plan
+                            </div>
+
+                        <% } else { %>
+
+                            <button
+                                type="button"
+                                disabled
+                            >
+                                Upgrade
+                            </button>
+
+                        <% } %>
+
+                    </div>
+
+                <% }); %>
+
+            <% } else { %>
+
+                <p>
+                    No subscription plans available.
+                </p>
+
+            <% } %>
 
 
             <p class="auth-footer">

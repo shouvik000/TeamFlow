@@ -22,4 +22,12 @@ router.get(
 );
 
 
+
+router.get(
+    "/usage",
+    isAuthenticated,
+    loadOrganization,
+    subscriptionController.getUsage
+);
+
 module.exports = router;
