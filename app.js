@@ -6,6 +6,8 @@ const pgSession = require("connect-pg-simple")(session);
 require("dotenv").config();
 
 const pool = require("./config/db");
+const webhookController =
+    require("./controllers/webhookController");
 const authRoutes = require("./routes/authRoutes");
 const projectRoutes =
     require("./routes/projectRoutes");
@@ -40,6 +42,20 @@ const PORT = process.env.PORT || 3000;
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
+
+
+
+
+
+
+
+app.post(
+    "/webhooks/razorpay",
+    express.raw({
+        type: "application/json"
+    }),
+    webhookController.razorpayWebhook
+);
 
 
 

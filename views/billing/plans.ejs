@@ -10,14 +10,21 @@
         content="width=device-width, initial-scale=1.0"
     >
 
-    <title>Plans | TeamFlow</title>
+    <title>
+        Plans | TeamFlow
+    </title>
 
     <link
         rel="stylesheet"
         href="/css/style.css"
     >
 
+    <script
+        src="https://checkout.razorpay.com/v1/checkout.js"
+    ></script>
+
 </head>
+
 
 <body>
 
@@ -25,198 +32,204 @@
 
         <div class="auth-card">
 
-            <h1>TeamFlow Plans</h1>
+            <h1>
+                TeamFlow Plans
+            </h1>
 
-            <!-- ============================= -->
-            <!-- CURRENT SUBSCRIPTION -->
-            <!-- ============================= -->
 
-            <h2>Current Plan</h2>
+            <h2>
+                Current Plan
+            </h2>
 
-            <% if (subscription) { %>
+            <p>
+                Plan:
 
-                <p>
-                    Plan:
-                    <strong>
-                        <%= subscription.plan_name %>
-                    </strong>
-                </p>
+                <strong>
+                    <%= subscription.plan_name %>
+                </strong>
+            </p>
 
-                <p>
-                    Status:
-                    <strong>
-                        <%= subscription.status %>
-                    </strong>
-                </p>
+            <p>
+                Status:
 
-            <% } else { %>
-
-                <p>
-                    No active subscription found.
-                </p>
-
-            <% } %>
+                <strong>
+                    <%= subscription.status %>
+                </strong>
+            </p>
 
 
             <hr>
 
 
-            <!-- ============================= -->
-            <!-- CURRENT USAGE -->
-            <!-- ============================= -->
-
-            <% if (subscription && usage) { %>
-
-                <h2>Current Usage</h2>
-
-                <p>
-                    Projects:
-                    <strong>
-                        <%= usage.project_count %>
-                    </strong>
-                    /
-                    <strong>
-                        <%= subscription.max_projects === null
-                            ? "Unlimited"
-                            : subscription.max_projects %>
-                    </strong>
-                </p>
+            <h2>
+                Current Usage
+            </h2>
 
 
-                <p>
-                    Members:
-                    <strong>
-                        <%= usage.member_count %>
-                    </strong>
-                    /
-                    <strong>
-                        <%= subscription.max_members === null
-                            ? "Unlimited"
-                            : subscription.max_members %>
-                    </strong>
-                </p>
+            <p>
+
+                Projects:
+
+                <strong>
+                    <%= usage.project_count %>
+                </strong>
+
+                /
+
+                <strong>
+                    <%= subscription.max_projects === null
+                        ? "Unlimited"
+                        : subscription.max_projects %>
+                </strong>
+
+            </p>
 
 
-                <p>
-                    Tasks:
-                    <strong>
-                        <%= usage.task_count %>
-                    </strong>
-                    /
-                    <strong>
-                        <%= subscription.max_tasks === null
-                            ? "Unlimited"
-                            : subscription.max_tasks %>
-                    </strong>
-                </p>
+            <p>
 
-            <% } %>
+                Members:
+
+                <strong>
+                    <%= usage.member_count %>
+                </strong>
+
+                /
+
+                <strong>
+                    <%= subscription.max_members === null
+                        ? "Unlimited"
+                        : subscription.max_members %>
+                </strong>
+
+            </p>
+
+
+            <p>
+
+                Tasks:
+
+                <strong>
+                    <%= usage.task_count %>
+                </strong>
+
+                /
+
+                <strong>
+                    <%= subscription.max_tasks === null
+                        ? "Unlimited"
+                        : subscription.max_tasks %>
+                </strong>
+
+            </p>
 
 
             <hr>
 
 
-            <!-- ============================= -->
-            <!-- AVAILABLE PLANS -->
-            <!-- ============================= -->
-
-            <h2>Available Plans</h2>
+            <h2>
+                Available Plans
+            </h2>
 
 
-            <% if (plans && plans.length > 0) { %>
+            <% plans.forEach(function(plan) { %>
 
-                <% plans.forEach(function(plan) { %>
+                <div
+                    style="
+                        border: 1px solid #ddd;
+                        padding: 20px;
+                        margin-top: 20px;
+                        border-radius: 8px;
+                    "
+                >
 
-                    <div
-                        style="
-                            border: 1px solid #ddd;
-                            padding: 20px;
-                            margin-top: 20px;
-                            border-radius: 8px;
-                        "
-                    >
-
-                        <h2>
-                            <%= plan.name %>
-                        </h2>
+                    <h2>
+                        <%= plan.name %>
+                    </h2>
 
 
-                        <h3>
-                            $<%= Number(plan.price_monthly).toFixed(2) %>
-                            / month
-                        </h3>
+                    <h3>
+
+                        ₹<%= Number(
+                            plan.price_monthly
+                        ).toFixed(2) %>
+
+                        / month
+
+                    </h3>
 
 
-                        <p>
-                            Projects:
-                            <strong>
-                                <%= plan.max_projects === null
-                                    ? "Unlimited"
-                                    : plan.max_projects %>
-                            </strong>
-                        </p>
+                    <p>
+
+                        Projects:
+
+                        <strong>
+                            <%= plan.max_projects === null
+                                ? "Unlimited"
+                                : plan.max_projects %>
+                        </strong>
+
+                    </p>
 
 
-                        <p>
-                            Members:
-                            <strong>
-                                <%= plan.max_members === null
-                                    ? "Unlimited"
-                                    : plan.max_members %>
-                            </strong>
-                        </p>
+                    <p>
+
+                        Members:
+
+                        <strong>
+                            <%= plan.max_members === null
+                                ? "Unlimited"
+                                : plan.max_members %>
+                        </strong>
+
+                    </p>
 
 
-                        <p>
-                            Tasks:
-                            <strong>
-                                <%= plan.max_tasks === null
-                                    ? "Unlimited"
-                                    : plan.max_tasks %>
-                            </strong>
-                        </p>
+                    <p>
+
+                        Tasks:
+
+                        <strong>
+                            <%= plan.max_tasks === null
+                                ? "Unlimited"
+                                : plan.max_tasks %>
+                        </strong>
+
+                    </p>
 
 
-                        <% if (
-                            subscription &&
-                            subscription.plan_name === plan.name
-                        ) { %>
+                    <% if (
+                        subscription &&
+                        subscription.plan_id === plan.id
+                    ) { %>
 
-                            <div
-                                style="
-                                    display: inline-block;
-                                    padding: 10px 16px;
-                                    border-radius: 6px;
-                                    background: #e5e7eb;
-                                    color: #111827;
-                                    font-weight: bold;
-                                "
-                            >
-                                ✓ Current Plan
-                            </div>
+                        <div
+                            style="
+                                display: inline-block;
+                                padding: 10px 16px;
+                                border-radius: 6px;
+                                background: #e5e7eb;
+                                font-weight: bold;
+                            "
+                        >
+                            ✓ Current Plan
+                        </div>
 
-                        <% } else { %>
+                    <% } else if (
+                        Number(plan.price_monthly) > 0
+                    ) { %>
 
-                            <button
-                                type="button"
-                                disabled
-                            >
-                                Upgrade
-                            </button>
+                        <button
+                            type="button"
+                            onclick="startPayment(<%= plan.id %>)"
+                        >
+                            Upgrade
+                        </button>
 
-                        <% } %>
+                    <% } %>
 
-                    </div>
+                </div>
 
-                <% }); %>
-
-            <% } else { %>
-
-                <p>
-                    No subscription plans available.
-                </p>
-
-            <% } %>
+            <% }); %>
 
 
             <p class="auth-footer">
@@ -230,6 +243,173 @@
         </div>
 
     </div>
+
+
+    <script>
+
+        async function startPayment(planId) {
+
+            try {
+
+                // Create order
+                const response =
+                    await fetch(
+                        "/billing/create-order",
+                        {
+                            method: "POST",
+
+                            headers: {
+                                "Content-Type":
+                                    "application/json"
+                            },
+
+                            body: JSON.stringify({
+                                planId: planId
+                            })
+                        }
+                    );
+
+
+                const data =
+                    await response.json();
+
+
+                if (!data.success) {
+
+                    alert(
+                        data.message ||
+                        "Could not create payment"
+                    );
+
+                    return;
+
+                }
+
+
+                // Razorpay checkout
+                const options = {
+
+                    key: data.keyId,
+
+                    amount: data.amount,
+
+                    currency: data.currency,
+
+                    name: "TeamFlow",
+
+                    description:
+                        `${data.planName} Subscription`,
+
+                    order_id:
+                        data.orderId,
+
+
+                    handler: async function (
+                        response
+                    ) {
+
+                        try {
+
+                            const verifyResponse =
+                                await fetch(
+                                    "/billing/verify-payment",
+                                    {
+                                        method: "POST",
+
+                                        headers: {
+                                            "Content-Type":
+                                                "application/json"
+                                        },
+
+                                        body: JSON.stringify(
+                                            response
+                                        )
+                                    }
+                                );
+
+
+                            const verifyData =
+                                await verifyResponse.json();
+
+
+                            if (
+                                verifyData.success
+                            ) {
+
+                                alert(
+                                    "Payment successful! Your plan has been upgraded."
+                                );
+
+                                window.location.href =
+                                    "/billing/plans";
+
+                            } else {
+
+                                alert(
+                                    verifyData.message ||
+                                    "Payment verification failed"
+                                );
+
+                            }
+
+                        } catch (error) {
+
+                            console.error(
+                                error
+                            );
+
+                            alert(
+                                "Payment verification failed"
+                            );
+
+                        }
+
+                    },
+
+
+                    prefill: {
+
+                        name:
+                            "<%= user.name %>",
+
+                        email:
+                            "<%= user.email %>"
+
+                    },
+
+
+                    theme: {
+
+                        color: "#2563eb"
+
+                    }
+
+                };
+
+
+                const razorpay =
+                    new Razorpay(options);
+
+
+                razorpay.open();
+
+
+            } catch (error) {
+
+                console.error(
+                    "Payment error:",
+                    error
+                );
+
+                alert(
+                    "Unable to start payment"
+                );
+
+            }
+
+        }
+
+    </script>
 
 </body>
 

@@ -103,3 +103,37 @@ exports.getOrganizationBillingInfo = async (
         usage
     };
 };
+
+
+
+// ============================================
+// Change organization plan
+// ============================================
+
+exports.changeOrganizationPlan = async (
+    organizationId,
+    planId
+) => {
+
+    const result = await pool.query(
+        `
+        UPDATE subscriptions
+
+        SET
+            plan_id = $1,
+            status = 'ACTIVE',
+            updated_at = CURRENT_TIMESTAMP
+
+        WHERE organization_id = $2
+
+        RETURNING *
+        `,
+        [
+            planId,
+            organizationId
+        ]
+    );
+
+
+    return result.rows[0] || null;
+};

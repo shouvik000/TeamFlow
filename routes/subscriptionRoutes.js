@@ -14,6 +14,10 @@ const {
 } = require("../middleware/tenantMiddleware");
 
 
+// ============================================
+// Plans
+// ============================================
+
 router.get(
     "/plans",
     isAuthenticated,
@@ -22,6 +26,9 @@ router.get(
 );
 
 
+// ============================================
+// Usage
+// ============================================
 
 router.get(
     "/usage",
@@ -29,5 +36,30 @@ router.get(
     loadOrganization,
     subscriptionController.getUsage
 );
+
+
+// ============================================
+// Create payment order
+// ============================================
+
+router.post(
+    "/create-order",
+    isAuthenticated,
+    loadOrganization,
+    subscriptionController.createOrder
+);
+
+
+// ============================================
+// Verify payment
+// ============================================
+
+router.post(
+    "/verify-payment",
+    isAuthenticated,
+    loadOrganization,
+    subscriptionController.verifyPayment
+);
+
 
 module.exports = router;
