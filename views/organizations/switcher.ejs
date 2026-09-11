@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        Switch Organization | TeamFlow
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="/css/style.css"
+    >
+
+</head>
+
+<body>
+
+    <div class="auth-container">
+
+        <div class="auth-card">
+
+            <h1>
+                Your Organizations
+            </h1>
+
+            <% organizations.forEach(function(organization) { %>
+
+                <div
+                    style="
+                        border: 1px solid #ddd;
+                        padding: 15px;
+                        margin-top: 15px;
+                        border-radius: 8px;
+                    "
+                >
+
+                    <h3>
+                        <%= organization.name %>
+                    </h3>
+
+                    <p>
+                        Role:
+                        <strong>
+                            <%= organization.role %>
+                        </strong>
+                    </p>
+
+                    <form
+                        action="/organizations/switch"
+                        method="POST"
+                    >
+
+                        <input
+                            type="hidden"
+                            name="organizationId"
+                            value="<%= organization.id %>"
+                        >
+
+                        <button type="submit">
+                            Switch
+                        </button>
+
+                    </form>
+
+                </div>
+
+            <% }); %>
+
+            <p class="auth-footer">
+
+                <a href="/dashboard">
+                    ← Dashboard
+                </a>
+
+            </p>
+
+        </div>
+
+    </div>
+
+</body>
+
+</html>

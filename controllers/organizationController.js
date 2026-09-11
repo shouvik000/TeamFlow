@@ -540,3 +540,156 @@ exports.acceptInvitation = async (req, res) => {
     }
 
 };
+
+
+
+
+
+// ============================================
+// Get user's organizations
+// ============================================
+
+exports.getMyOrganizations = async (req, res) => {
+
+    const userId =
+        req.session.user.id;
+
+    try {
+
+        const result = await pool.query(
+            `
+            SELECT
+                o.id,
+                o.name,
+                om.role
+            FROM organization_members om
+
+            JOIN organizations o
+                ON o.id = om.organization_id
+
+            WHERE om.user_id = $1
+
+            ORDER BY o.name ASC
+            `,
+            [userId]
+        );
+
+        res.render(
+            "organizations/switcher",
+            {
+                organizations: result.rows
+            }
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Get organizations error:",
+            error
+        );
+
+        res.status(500).send(
+            "Failed to load organizations"
+        );
+    }
+};
+
+
+
+
+
+// ============================================
+// Switch active organization
+// ============================================
+
+exports.switchOrganization = async (req, res) => {
+
+    const {
+        organizationId
+    } = req.body;
+
+    const userId =
+        req.session.user.id;
+
+    try {
+
+        const membershipResult =
+            await pool.query(
+                `
+                SELECT
+                    om.organization_id,
+                    om.role,
+                    o.name AS organization_name
+
+                FROM organization_members om
+
+                JOIN organizations o
+                    ON o.id = om.organization_id
+
+                WHERE om.user_id = $1
+                  AND om.organization_id = $2
+                `,
+                [
+                    userId,
+                    organizationId
+                ]
+            );
+
+
+        if (
+            membershipResult.rows.length === 0
+        ) {
+
+            return res.status(403).send(
+                "You are not a member of this organization"
+            );
+
+        }
+
+
+        const organization =
+            membershipResult.rows[0];
+
+
+        // Update active organization
+        req.session.user.organizationId =
+            organization.organization_id;
+
+        req.session.user.organizationName =
+            organization.organization_name;
+
+        req.session.user.role =
+            organization.role;
+
+
+        req.session.save((err) => {
+
+            if (err) {
+
+                console.error(
+                    "Session save error:",
+                    err
+                );
+
+                return res.status(500).send(
+                    "Failed to switch organization"
+                );
+
+            }
+
+            res.redirect("/dashboard");
+
+        });
+
+    } catch (error) {
+
+        console.error(
+            "Switch organization error:",
+            error
+        );
+
+        res.status(500).send(
+            "Failed to switch organization"
+        );
+    }
+};

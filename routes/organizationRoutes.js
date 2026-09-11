@@ -95,4 +95,30 @@ router.post(
 );
 
 
+
+
+
+router.get(
+    "/switch",
+    isAuthenticated,
+    organizationController.getMyOrganizations
+);
+
+
+router.post(
+    "/switch",
+    isAuthenticated,
+    organizationController.switchOrganization
+);
+
+
+
+
+
+
+
+
+
+
+
 module.exports = router;
