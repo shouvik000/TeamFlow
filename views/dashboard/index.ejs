@@ -10,289 +10,309 @@
         content="width=device-width, initial-scale=1.0"
     >
 
-    <title>
-        Dashboard | TeamFlow
-    </title>
+    <title>Dashboard | TeamFlow</title>
 
+    
     <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
         rel="stylesheet"
-        href="/css/style.css"
     >
-
-    <style>
-
-        /* ============================================
-           Dashboard statistics
-        ============================================ */
-
-        .dashboard-stats {
-
-            display: grid;
-
-            grid-template-columns:
-                repeat(
-                    auto-fit,
-                    minmax(180px, 1fr)
-                );
-
-            gap: 15px;
-
-            margin-top: 20px;
-
-            margin-bottom: 30px;
-        }
-
-
-        .stat-card {
-
-            border: 1px solid #ddd;
-
-            border-radius: 10px;
-
-            padding: 20px;
-
-            background: #ffffff;
-
-            text-align: center;
-        }
-
-
-        .stat-card h3 {
-
-            margin-bottom: 10px;
-
-            font-size: 16px;
-
-        }
-
-
-        .stat-number {
-
-            font-size: 32px;
-
-            font-weight: bold;
-
-            margin: 0;
-        }
-
-
-        /* ============================================
-           Task status section
-        ============================================ */
-
-        .task-status-list {
-
-            margin-top: 20px;
-        }
-
-
-        .task-status-item {
-
-            display: flex;
-
-            justify-content: space-between;
-
-            align-items: center;
-
-            padding: 12px 15px;
-
-            border: 1px solid #ddd;
-
-            border-radius: 8px;
-
-            margin-top: 10px;
-
-            background: #ffffff;
-        }
-
-
-        .task-status-count {
-
-            font-weight: bold;
-
-        }
-
-
-        /* ============================================
-           Invitations
-        ============================================ */
-
-        .invitation-card {
-
-            border: 1px solid #ddd;
-
-            padding: 15px;
-
-            margin-top: 15px;
-
-            border-radius: 8px;
-
-        }
-
-    </style>
 
 </head>
 
 
-<body>
+<body class="bg-light">
 
-    <div class="auth-container">
+    <!-- ============================================
+         NAVBAR
+    ============================================= -->
 
-        <div class="auth-card">
+    <nav class="navbar navbar-dark bg-dark shadow-sm">
 
-            <!-- ================================= -->
-            <!-- HEADER -->
-            <!-- ================================= -->
+        <div class="container">
 
-            <h1>
+            <a
+                class="navbar-brand fw-bold"
+                href="/dashboard"
+            >
                 TeamFlow 🚀
+            </a>
+
+
+            <div class="d-flex align-items-center gap-3">
+
+                <span class="text-white">
+
+                    <%= user.name %>
+
+                </span>
+
+
+                <a
+                    href="/notifications"
+                    class="btn btn-outline-light btn-sm position-relative"
+                >
+
+                    🔔
+
+                    Notifications
+
+                    <span
+                        id="notificationBadge"
+                        class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                        style="display: none;"
+                    >
+                        0
+                    </span>
+
+                </a>
+
+
+                <form
+                    action="/auth/logout"
+                    method="POST"
+                    class="m-0"
+                >
+
+                    <button
+                        type="submit"
+                        class="btn btn-danger btn-sm"
+                    >
+                        Logout
+                    </button>
+
+                </form>
+
+            </div>
+
+        </div>
+
+    </nav>
+
+
+    <!-- ============================================
+         MAIN CONTENT
+    ============================================= -->
+
+    <main class="container py-5">
+
+
+        <!-- ========================================
+             WELCOME SECTION
+        ========================================= -->
+
+        <div class="mb-4">
+
+            <h1 class="fw-bold">
+                Dashboard
             </h1>
 
-            <h2>
-                Dashboard
-            </h2>
+            <p class="text-muted mb-0">
+
+                Welcome back,
+
+                <strong>
+                    <%= user.name %>
+                </strong>
+
+            </p>
+
+        </div>
 
 
-            <!-- ================================= -->
-            <!-- CURRENT USER -->
-            <!-- ================================= -->
+        <!-- ========================================
+             ORGANIZATION INFO
+        ========================================= -->
 
-            <div>
+        <div class="card shadow-sm border-0 mb-4">
 
-                <p>
+            <div class="card-body">
 
-                    Welcome,
+                <div class="row">
 
-                    <strong>
-                        <%= user.name %>
-                    </strong>
+                    <div class="col-md-4 mb-3 mb-md-0">
 
-                </p>
+                        <small class="text-muted">
+                            Email
+                        </small>
 
+                        <div class="fw-semibold">
+                            <%= user.email %>
+                        </div>
 
-                <p>
-
-                    Email:
-
-                    <strong>
-                        <%= user.email %>
-                    </strong>
-
-                </p>
+                    </div>
 
 
-                <p>
+                    <div class="col-md-4 mb-3 mb-md-0">
 
-                    Current Organization:
+                        <small class="text-muted">
+                            Organization
+                        </small>
 
-                    <strong>
-                        <%= user.organizationName %>
-                    </strong>
+                        <div class="fw-semibold">
+                            <%= user.organizationName %>
+                        </div>
 
-                </p>
+                    </div>
 
 
-                <p>
+                    <div class="col-md-4">
 
-                    Current Role:
+                        <small class="text-muted">
+                            Role
+                        </small>
 
-                    <strong>
-                        <%= user.role %>
-                    </strong>
+                        <div>
 
-                </p>
+                            <span class="badge bg-primary">
+
+                                <%= user.role %>
+
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ========================================
+             STATISTICS
+        ========================================= -->
+
+        <div class="row g-4 mb-5">
+
+
+            <!-- Projects -->
+
+            <div class="col-md-6 col-xl-3">
+
+                <div class="card border-0 shadow-sm h-100">
+
+                    <div class="card-body">
+
+                        <div class="text-muted mb-2">
+                            Projects
+                        </div>
+
+                        <h2 class="fw-bold mb-0">
+
+                            <%= projectCount %>
+
+                        </h2>
+
+                    </div>
+
+                </div>
 
             </div>
 
 
-            <hr>
+            <!-- Tasks -->
 
+            <div class="col-md-6 col-xl-3">
 
-            <!-- ================================= -->
-            <!-- DASHBOARD STATISTICS -->
-            <!-- ================================= -->
+                <div class="card border-0 shadow-sm h-100">
 
-            <h2>
-                Organization Overview
-            </h2>
+                    <div class="card-body">
 
+                        <div class="text-muted mb-2">
+                            Total Tasks
+                        </div>
 
-            <div class="dashboard-stats">
+                        <h2 class="fw-bold mb-0">
 
+                            <%= taskCount %>
 
-                <!-- Projects -->
+                        </h2>
 
-                <div class="stat-card">
-
-                    <h3>
-                        Projects
-                    </h3>
-
-                    <p class="stat-number">
-                        <%= projectCount %>
-                    </p>
+                    </div>
 
                 </div>
-
-
-                <!-- Tasks -->
-
-                <div class="stat-card">
-
-                    <h3>
-                        Total Tasks
-                    </h3>
-
-                    <p class="stat-number">
-                        <%= taskCount %>
-                    </p>
-
-                </div>
-
-
-                <!-- Completed -->
-
-                <div class="stat-card">
-
-                    <h3>
-                        Completed
-                    </h3>
-
-                    <p class="stat-number">
-                        <%= completedCount %>
-                    </p>
-
-                </div>
-
-
-                <!-- Members -->
-
-                <div class="stat-card">
-
-                    <h3>
-                        Team Members
-                    </h3>
-
-                    <p class="stat-number">
-                        <%= memberCount %>
-                    </p>
-
-                </div>
-
 
             </div>
 
 
-            <!-- ================================= -->
-            <!-- TASK STATUS -->
-            <!-- ================================= -->
+            <!-- Completed -->
 
-            <h2>
-                Task Overview
-            </h2>
+            <div class="col-md-6 col-xl-3">
+
+                <div class="card border-0 shadow-sm h-100">
+
+                    <div class="card-body">
+
+                        <div class="text-muted mb-2">
+                            Completed
+                        </div>
+
+                        <h2 class="fw-bold mb-0">
+
+                            <%= completedCount %>
+
+                        </h2>
+
+                    </div>
+
+                </div>
+
+            </div>
 
 
-            <div class="task-status-list">
+            <!-- Members -->
+
+            <div class="col-md-6 col-xl-3">
+
+                <div class="card border-0 shadow-sm h-100">
+
+                    <div class="card-body">
+
+                        <div class="text-muted mb-2">
+                            Team Members
+                        </div>
+
+                        <h2 class="fw-bold mb-0">
+
+                            <%= memberCount %>
+
+                        </h2>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ========================================
+             TASK OVERVIEW
+        ========================================= -->
+
+        <div class="card border-0 shadow-sm mb-5">
+
+            <div class="card-body">
+
+                <div class="d-flex justify-content-between align-items-center mb-4">
+
+                    <h4 class="fw-bold mb-0">
+                        Task Overview
+                    </h4>
+
+                    <a
+                        href="/projects"
+                        class="btn btn-primary btn-sm"
+                    >
+                        View Projects
+                    </a>
+
+                </div>
+
 
                 <% if (
                     taskStatuses &&
@@ -300,22 +320,156 @@
                 ) { %>
 
 
-                    <% taskStatuses.forEach(function(item) { %>
+                    <div class="row g-3">
 
-                        <div class="task-status-item">
+                        <% taskStatuses.forEach(function(item) { %>
 
-                            <span>
+                            <div class="col-md-6 col-lg-3">
 
-                                <%= item.status %>
+                                <div class="border rounded p-3 bg-light">
 
-                            </span>
+                                    <div class="text-muted small mb-1">
+
+                                        <%= item.status %>
+
+                                    </div>
+
+                                    <div class="fs-3 fw-bold">
+
+                                        <%= item.count %>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        <% }); %>
+
+                    </div>
 
 
-                            <span class="task-status-count">
+                <% } else { %>
 
-                                <%= item.count %>
+                    <div class="text-center py-4">
 
-                            </span>
+                        <p class="text-muted mb-0">
+
+                            No tasks available yet.
+
+                        </p>
+
+                    </div>
+
+                <% } %>
+
+            </div>
+
+        </div>
+
+
+        <!-- ========================================
+             PENDING INVITATIONS
+        ========================================= -->
+
+        <div class="card border-0 shadow-sm mb-5">
+
+            <div class="card-body">
+
+                <h4 class="fw-bold mb-4">
+                    Pending Invitations
+                </h4>
+
+
+                <% if (
+                    invitations &&
+                    invitations.length > 0
+                ) { %>
+
+
+                    <% invitations.forEach(function(invitation) { %>
+
+                        <div class="border rounded p-3 mb-3">
+
+                            <div class="row align-items-center">
+
+                                <div class="col-md-8">
+
+                                    <h5 class="mb-2">
+
+                                        <%= invitation.organization_name %>
+
+                                    </h5>
+
+
+                                    <p class="text-muted mb-1">
+
+                                        You've been invited
+                                        to join this organization.
+
+                                    </p>
+
+
+                                    <div class="small">
+
+                                        <strong>
+                                            Email:
+                                        </strong>
+
+                                        <%= invitation.email %>
+
+                                        <br>
+
+                                        <strong>
+                                            Role:
+                                        </strong>
+
+                                        <span class="badge bg-secondary">
+
+                                            <%= invitation.role %>
+
+                                        </span>
+
+                                        <br>
+
+                                        <strong>
+                                            Expires:
+                                        </strong>
+
+                                        <%= new Date(
+                                            invitation.expires_at
+                                        ).toLocaleString() %>
+
+                                    </div>
+
+                                </div>
+
+
+                                <div class="col-md-4 text-md-end mt-3 mt-md-0">
+
+                                    <form
+                                        action="/organizations/invite/accept"
+                                        method="POST"
+                                    >
+
+                                        <input
+                                            type="hidden"
+                                            name="invitationId"
+                                            value="<%= invitation.id %>"
+                                        >
+
+                                        <button
+                                            type="submit"
+                                            class="btn btn-success"
+                                        >
+                                            Accept Invitation
+                                        </button>
+
+                                    </form>
+
+                                </div>
+
+                            </div>
 
                         </div>
 
@@ -324,284 +478,188 @@
 
                 <% } else { %>
 
-                    <p>
-                        No tasks available.
+                    <p class="text-muted mb-0">
+
+                        You don't have any pending invitations.
+
                     </p>
 
                 <% } %>
 
             </div>
 
-
-            <hr>
-
-
-            <!-- ================================= -->
-            <!-- PENDING INVITATIONS -->
-            <!-- ================================= -->
-
-            <h2>
-                Pending Invitations
-            </h2>
+        </div>
 
 
-            <% if (
+        <!-- ========================================
+             QUICK ACTIONS
+        ========================================= -->
 
-                invitations &&
-                invitations.length > 0
+        <div class="card border-0 shadow-sm mb-5">
 
-            ) { %>
+            <div class="card-body">
 
-
-                <% invitations.forEach(
-                    invitation => {
-                %>
-
-
-                    <div class="invitation-card">
+                <h4 class="fw-bold mb-4">
+                    Quick Actions
+                </h4>
 
 
-                        <h3>
-
-                            <%= invitation.organization_name %>
-
-                        </h3>
+                <div class="row g-3">
 
 
-                        <p>
+                    <!-- Projects -->
 
-                            You've been invited
-                            to join this organization.
+                    <div class="col-md-6 col-lg-3">
 
-                        </p>
-
-
-                        <p>
-
-                            Email:
-
-                            <strong>
-
-                                <%= invitation.email %>
-
-                            </strong>
-
-                        </p>
-
-
-                        <p>
-
-                            Role:
-
-                            <strong>
-
-                                <%= invitation.role %>
-
-                            </strong>
-
-                        </p>
-
-
-                        <p>
-
-                            Expires:
-
-                            <%= new Date(
-                                invitation.expires_at
-                            ).toLocaleString() %>
-
-                        </p>
-
-
-                        <form
-
-                            action=
-                            "/organizations/invite/accept"
-
-                            method="POST"
-
+                        <a
+                            href="/projects"
+                            class="btn btn-outline-primary w-100"
                         >
 
-                            <input
+                            📁
 
-                                type="hidden"
+                            Projects
 
-                                name="invitationId"
-
-                                value=
-                                "<%= invitation.id %>"
-
-                            >
-
-
-                            <button
-                                type="submit"
-                            >
-
-                                Accept Invitation
-
-                            </button>
-
-                        </form>
-
+                        </a>
 
                     </div>
 
 
-                <% }); %>
+                    <!-- Team -->
 
+                    <% if (
+                        user.role === "OWNER" ||
+                        user.role === "ADMIN"
+                    ) { %>
 
-            <% } else { %>
+                        <div class="col-md-6 col-lg-3">
 
+                            <a
+                                href="/organizations/members"
+                                class="btn btn-outline-primary w-100"
+                            >
 
-                <p>
+                                👥
 
-                    You don't have any
-                    pending invitations.
+                                Team Members
 
-                </p>
+                            </a>
 
+                        </div>
 
-            <% } %>
+                    <% } %>
 
 
-            <hr>
+                    <!-- Activity -->
 
+                    <div class="col-md-6 col-lg-3">
 
-            <!-- ================================= -->
-            <!-- NAVIGATION -->
-            <!-- ================================= -->
+                        <a
+                            href="/organizations/activity"
+                            class="btn btn-outline-primary w-100"
+                        >
 
-            <p>
+                            📋
 
-                <a href="/projects">
+                            Activity Log
 
-                    Projects
+                        </a>
 
-                </a>
+                    </div>
 
-            </p>
 
+                    <!-- Billing -->
 
-            <% if (
+                    <div class="col-md-6 col-lg-3">
 
-                user.role === "OWNER" ||
+                        <a
+                            href="/billing/plans"
+                            class="btn btn-outline-primary w-100"
+                        >
 
-                user.role === "ADMIN"
+                            💳
 
-            ) { %>
+                            Subscription
 
+                        </a>
 
-                <p>
+                    </div>
 
-                    <a href="/organizations/members">
 
-                        Team Members
+                    <!-- Organization -->
 
-                    </a>
+                    <div class="col-md-6 col-lg-3">
 
-                </p>
+                        <a
+                            href="/organizations/switch"
+                            class="btn btn-outline-secondary w-100"
+                        >
 
+                            🔄
 
-            <% } %>
+                            Switch Organization
 
+                        </a>
 
-            <p>
+                    </div>
 
-                <a href="/organizations/activity">
 
-                    Activity Log
+                    <!-- Notifications -->
 
-                </a>
+                    <div class="col-md-6 col-lg-3">
 
-            </p>
+                        <a
+                            href="/notifications"
+                            class="btn btn-outline-secondary w-100"
+                        >
 
+                            🔔
 
-            <p>
+                            Notifications
 
-                <a href="/billing/plans">
+                        </a>
 
-                    Subscription & Plans
+                    </div>
 
-                </a>
+                </div>
 
-            </p>
-
-
-            <p>
-
-                <a href="/organizations/switch">
-
-                    Switch Organization
-
-                </a>
-
-            </p>
-
-
-            <!-- ================================= -->
-            <!-- NOTIFICATIONS -->
-            <!-- ================================= -->
-
-            <p>
-
-                <a href="/notifications">
-
-                    🔔 Notifications
-
-                    <span
-                        id="notificationBadge"
-
-                        style="
-                            display: none;
-                            background: red;
-                            color: white;
-                            padding: 2px 7px;
-                            border-radius: 10px;
-                            font-size: 12px;
-                        "
-                    >
-
-                        0
-
-                    </span>
-
-                </a>
-
-            </p>
-
-
-            <!-- ================================= -->
-            <!-- LOGOUT -->
-            <!-- ================================= -->
-
-            <form
-
-                action="/auth/logout"
-
-                method="POST"
-
-            >
-
-                <button
-                    type="submit"
-                >
-
-                    Logout
-
-                </button>
-
-            </form>
-
+            </div>
 
         </div>
 
-    </div>
-
+    </main>
 
 
     <!-- ============================================
-         Notification Count Script
+         FOOTER
+    ============================================= -->
+
+    <footer class="border-top bg-white py-3">
+
+        <div class="container text-center">
+
+            <small class="text-muted">
+
+                TeamFlow SaaS Platform
+
+            </small>
+
+        </div>
+
+    </footer>
+
+
+    <!-- ============================================
+         BOOTSTRAP JS
+    ============================================= -->
+
+    <script
+        src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+    ></script>
+
+
+    <!-- ============================================
+         NOTIFICATION COUNT
     ============================================= -->
 
     <script>
@@ -627,20 +685,15 @@
 
 
                 if (
-
                     data.success &&
-
                     data.count > 0
-
                 ) {
 
                     badge.textContent =
                         data.count;
 
-
                     badge.style.display =
                         "inline-block";
-
 
                 } else {
 
@@ -648,7 +701,6 @@
                         "none";
 
                 }
-
 
             } catch (error) {
 
@@ -662,7 +714,6 @@
         }
 
 
-        // Load notification count
         loadUnreadNotifications();
 
     </script>
