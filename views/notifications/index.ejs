@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Notifications | TeamFlow</title>
+
+    <link
+        rel="stylesheet"
+        href="/css/style.css"
+    >
+
+</head>
+
+<body>
+
+    <div class="auth-container">
+
+        <div class="auth-card">
+
+            <h1>
+                Notifications 🔔
+            </h1>
+
+
+            <form
+                action="/notifications/read-all"
+                method="POST"
+            >
+
+                <button type="submit">
+                    Mark All as Read
+                </button>
+
+            </form>
+
+
+            <hr>
+
+
+            <% if (notifications.length === 0) { %>
+
+                <p>
+                    You don't have any notifications.
+                </p>
+
+            <% } %>
+
+
+            <% notifications.forEach(function(notification) { %>
+
+                <div
+                    style="
+                        border: 1px solid #ddd;
+                        padding: 15px;
+                        margin-top: 15px;
+                        border-radius: 8px;
+
+                        <% if (!notification.is_read) { %>
+                            background: #f0f7ff;
+                        <% } %>
+                    "
+                >
+
+                    <h3>
+                        <%= notification.title %>
+                    </h3>
+
+
+                    <p>
+                        <%= notification.message %>
+                    </p>
+
+
+                    <small>
+                        <%= new Date(
+                            notification.created_at
+                        ).toLocaleString() %>
+                    </small>
+
+
+                    <% if (!notification.is_read) { %>
+
+                        <form
+                            action="/notifications/<%= notification.id %>/read"
+                            method="POST"
+                            style="margin-top: 10px;"
+                        >
+
+                            <button type="submit">
+                                Mark as Read
+                            </button>
+
+                        </form>
+
+                    <% } else { %>
+
+                        <p>
+                            ✓ Read
+                        </p>
+
+                    <% } %>
+
+                </div>
+
+            <% }); %>
+
+
+            <p class="auth-footer">
+
+                <a href="/dashboard">
+                    ← Dashboard
+                </a>
+
+            </p>
+
+        </div>
+
+    </div>
+
+</body>
+
+</html>

@@ -21,6 +21,9 @@ const projectRoutes =
     const subscriptionRoutes =
     require("./routes/subscriptionRoutes");
 
+    const notificationRoutes =
+    require("./routes/notificationRoutes");
+
 
 
 const { isAuthenticated } = require("./middleware/authMiddleware");
@@ -173,6 +176,11 @@ app.use(
 
 app.use("/", taskRoutes);
 
+
+app.use(
+    "/notifications",
+    notificationRoutes
+);
 
 
 

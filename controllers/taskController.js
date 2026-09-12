@@ -4,6 +4,10 @@ const {
     createActivityLog
 } = require("../services/activityService");
 
+const {
+    createNotification
+} = require("../services/notificationService");
+
 
 // ============================================
 // Get tasks for a project
@@ -80,6 +84,7 @@ exports.getTasks = async (req, res) => {
             ]
         );
 
+
         res.render("tasks/index", {
             project: project,
             tasks: taskResult.rows
@@ -112,6 +117,7 @@ exports.showCreateTask = async (req, res) => {
 
     try {
 
+        // Get project
         const projectResult = await pool.query(
             `
             SELECT
@@ -127,6 +133,7 @@ exports.showCreateTask = async (req, res) => {
             ]
         );
 
+
         if (projectResult.rows.length === 0) {
             return res.status(404).send(
                 "Project not found"
@@ -134,6 +141,7 @@ exports.showCreateTask = async (req, res) => {
         }
 
 
+        // Get organization members
         const membersResult = await pool.query(
             `
             SELECT
@@ -206,7 +214,10 @@ exports.createTask = async (req, res) => {
             req.session.user.id;
 
 
+        // ============================================
         // Verify project belongs to organization
+        // ============================================
+
         const projectResult = await pool.query(
             `
             SELECT
@@ -236,7 +247,10 @@ exports.createTask = async (req, res) => {
             projectResult.rows[0];
 
 
+        // ============================================
         // Validate assignee
+        // ============================================
+
         let assigneeId = null;
 
         if (assignedTo) {
@@ -275,7 +289,10 @@ exports.createTask = async (req, res) => {
         }
 
 
+        // ============================================
         // Validate priority
+        // ============================================
+
         const allowedPriorities = [
             "LOW",
             "MEDIUM",
@@ -301,7 +318,10 @@ exports.createTask = async (req, res) => {
         }
 
 
+        // ============================================
         // Create task
+        // ============================================
+
         const taskResult = await pool.query(
             `
             INSERT INTO tasks
@@ -349,7 +369,10 @@ exports.createTask = async (req, res) => {
             taskResult.rows[0];
 
 
+        // ============================================
         // Create activity log
+        // ============================================
+
         await createActivityLog({
             organizationId,
             userId,
@@ -360,6 +383,30 @@ exports.createTask = async (req, res) => {
                 `Created task "${task.title}" in project "${project.name}"`
         });
 
+
+        // ============================================
+        // Notify assigned user
+        // ============================================
+
+        if (assigneeId) {
+
+            await createNotification({
+                organizationId,
+                userId: assigneeId,
+                type: "TASK_ASSIGNED",
+                title: "New Task Assigned",
+                message:
+                    `You were assigned the task "${task.title}"`,
+                entityType: "TASK",
+                entityId: task.id
+            });
+
+        }
+
+
+        // ============================================
+        // Redirect
+        // ============================================
 
         res.redirect(
             `/projects/${projectId}/tasks`
@@ -435,6 +482,7 @@ exports.showEditTask = async (req, res) => {
             taskResult.rows[0];
 
 
+        // Get organization members
         const membersResult = await pool.query(
             `
             SELECT
@@ -503,6 +551,10 @@ exports.updateTask = async (req, res) => {
 
     try {
 
+        // ============================================
+        // Validate title
+        // ============================================
+
         if (!title || !title.trim()) {
 
             return res.status(400).send(
@@ -512,6 +564,10 @@ exports.updateTask = async (req, res) => {
         }
 
 
+        // ============================================
+        // Allowed statuses
+        // ============================================
+
         const allowedStatuses = [
             "TODO",
             "IN_PROGRESS",
@@ -519,6 +575,10 @@ exports.updateTask = async (req, res) => {
             "DONE"
         ];
 
+
+        // ============================================
+        // Allowed priorities
+        // ============================================
 
         const allowedPriorities = [
             "LOW",
@@ -562,7 +622,10 @@ exports.updateTask = async (req, res) => {
         }
 
 
-        // Verify task belongs to current organization
+        // ============================================
+        // Get existing task
+        // ============================================
+
         const taskResult = await pool.query(
             `
             SELECT
@@ -570,7 +633,8 @@ exports.updateTask = async (req, res) => {
                 project_id,
                 title,
                 status,
-                priority
+                priority,
+                assigned_to
 
             FROM tasks
 
@@ -601,7 +665,10 @@ exports.updateTask = async (req, res) => {
             oldTask.project_id;
 
 
+        // ============================================
         // Validate assignee
+        // ============================================
+
         let assigneeId = null;
 
 
@@ -641,7 +708,10 @@ exports.updateTask = async (req, res) => {
         }
 
 
+        // ============================================
         // Update task
+        // ============================================
+
         const updatedTaskResult =
             await pool.query(
                 `
@@ -663,7 +733,8 @@ exports.updateTask = async (req, res) => {
                     id,
                     title,
                     status,
-                    priority
+                    priority,
+                    assigned_to
                 `,
                 [
                     title.trim(),
@@ -682,7 +753,10 @@ exports.updateTask = async (req, res) => {
             updatedTaskResult.rows[0];
 
 
+        // ============================================
         // Activity description
+        // ============================================
+
         let descriptionText =
             `Updated task "${updatedTask.title}"`;
 
@@ -709,6 +783,10 @@ exports.updateTask = async (req, res) => {
         }
 
 
+        // ============================================
+        // Create activity log
+        // ============================================
+
         await createActivityLog({
             organizationId,
             userId,
@@ -718,6 +796,34 @@ exports.updateTask = async (req, res) => {
             description: descriptionText
         });
 
+
+        // ============================================
+        // Notify newly assigned user
+        // ============================================
+
+        if (
+            assigneeId &&
+            Number(assigneeId) !==
+            Number(oldTask.assigned_to)
+        ) {
+
+            await createNotification({
+                organizationId,
+                userId: assigneeId,
+                type: "TASK_ASSIGNED",
+                title: "Task Assigned",
+                message:
+                    `You were assigned the task "${updatedTask.title}"`,
+                entityType: "TASK",
+                entityId: updatedTask.id
+            });
+
+        }
+
+
+        // ============================================
+        // Redirect
+        // ============================================
 
         res.redirect(
             `/projects/${projectId}/tasks`
@@ -755,14 +861,19 @@ exports.deleteTask = async (req, res) => {
 
     try {
 
+        // ============================================
         // Find task first
+        // ============================================
+
         const taskResult = await pool.query(
             `
             SELECT
                 id,
                 project_id,
                 title
+
             FROM tasks
+
             WHERE id = $1
               AND organization_id = $2
             `,
@@ -786,10 +897,14 @@ exports.deleteTask = async (req, res) => {
             taskResult.rows[0];
 
 
+        // ============================================
         // Delete task
+        // ============================================
+
         await pool.query(
             `
             DELETE FROM tasks
+
             WHERE id = $1
               AND organization_id = $2
             `,
@@ -800,7 +915,10 @@ exports.deleteTask = async (req, res) => {
         );
 
 
+        // ============================================
         // Activity log
+        // ============================================
+
         await createActivityLog({
             organizationId,
             userId,
@@ -811,6 +929,10 @@ exports.deleteTask = async (req, res) => {
                 `Deleted task "${task.title}"`
         });
 
+
+        // ============================================
+        // Redirect
+        // ============================================
 
         res.redirect(
             `/projects/${task.project_id}/tasks`
