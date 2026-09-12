@@ -6,51 +6,55 @@ const pgSession = require("connect-pg-simple")(session);
 require("dotenv").config();
 
 const pool = require("./config/db");
+
 const webhookController =
     require("./controllers/webhookController");
-const authRoutes = require("./routes/authRoutes");
+
+const authRoutes =
+    require("./routes/authRoutes");
+
 const projectRoutes =
     require("./routes/projectRoutes");
 
-    const organizationRoutes =
+const organizationRoutes =
     require("./routes/organizationRoutes");
 
-  const taskRoutes =
-    require("./routes/taskRoutes");  
+const taskRoutes =
+    require("./routes/taskRoutes");
 
-    const subscriptionRoutes =
+const subscriptionRoutes =
     require("./routes/subscriptionRoutes");
 
-    const notificationRoutes =
+const notificationRoutes =
     require("./routes/notificationRoutes");
 
 
-
-const { isAuthenticated } = require("./middleware/authMiddleware");
-
-
 const app = express();
-const PORT = process.env.PORT || 3000;
+
+const PORT =
+    process.env.PORT || 3000;
 
 
+// ============================================
+// EJS CONFIGURATION
+// ============================================
+
+app.set(
+    "view engine",
+    "ejs"
+);
+
+app.set(
+    "views",
+    path.join(__dirname, "views")
+);
 
 
-
-
-
-
-
-  // EJS CONFIGURATION
-
-app.set("view engine", "ejs");
-app.set("views", path.join(__dirname, "views"));
-
-
-
-
-
-
-
+// ============================================
+// RAZORPAY WEBHOOK
+// IMPORTANT:
+// Must come before express.json()
+// ============================================
 
 app.post(
     "/webhooks/razorpay",
@@ -61,106 +65,100 @@ app.post(
 );
 
 
-
-
-
-
-
-
-
+// ============================================
 // GENERAL MIDDLEWARE
+// ============================================
+
+app.use(
+    express.urlencoded({
+        extended: true
+    })
+);
+
+app.use(
+    express.json()
+);
 
 
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
-
-
-
-
-
-
-
-
-
-
-
-
+// ============================================
 // STATIC FILES
+// ============================================
 
-app.use(express.static(path.join(__dirname, "public")));
-
-
-
-
-
-
-
+app.use(
+    express.static(
+        path.join(__dirname, "public")
+    )
+);
 
 
-
+// ============================================
 // SESSION MIDDLEWARE
-// IMPORTANT: Must come BEFORE routes
-
+// IMPORTANT:
+// Must come BEFORE routes
+// ============================================
 
 app.use(
     session({
+
         store: new pgSession({
             pool: pool,
             tableName: "session"
         }),
 
-        secret: process.env.SESSION_SECRET,
+        secret:
+            process.env.SESSION_SECRET,
 
         resave: false,
 
         saveUninitialized: false,
 
         cookie: {
-            maxAge: 1000 * 60 * 60 * 24
+            maxAge:
+                1000 * 60 * 60 * 24
         }
+
     })
 );
 
 
-
-
-
-
-
-
-
-
-
+// ============================================
 // MAKE USER AVAILABLE TO ALL EJS FILES
+// ============================================
+
+app.use(
+    (req, res, next) => {
+
+        res.locals.user =
+            req.session.user || null;
+
+        next();
+    }
+);
 
 
-app.use((req, res, next) => {
-
-    res.locals.user = req.session.user || null;
-
-    next();
-});
-
-
-
-
-
-
-
-
-
-
-
-
+// ============================================
 // AUTH ROUTES
+// ============================================
+
+app.use(
+    "/auth",
+    authRoutes
+);
 
 
-app.use("/auth", authRoutes);
+// ============================================
+// PROJECT ROUTES
+// ============================================
+
+app.use(
+    "/projects",
+    projectRoutes
+);
 
 
-
-app.use("/projects", projectRoutes);
-
+// ============================================
+// ORGANIZATION ROUTES
+// ============================================
 
 app.use(
     "/organizations",
@@ -168,14 +166,29 @@ app.use(
 );
 
 
+// ============================================
+// BILLING ROUTES
+// ============================================
+
 app.use(
     "/billing",
     subscriptionRoutes
 );
 
 
-app.use("/", taskRoutes);
+// ============================================
+// TASK ROUTES
+// ============================================
 
+app.use(
+    "/",
+    taskRoutes
+);
+
+
+// ============================================
+// NOTIFICATION ROUTES
+// ============================================
 
 app.use(
     "/notifications",
@@ -183,194 +196,373 @@ app.use(
 );
 
 
-
-
-
-
-
-
-
-
-
-
+// ============================================
 // HOME ROUTE
+// ============================================
 
+app.get(
+    "/",
+    (req, res) => {
 
-app.get("/", (req, res) => {
+        if (req.session.user) {
 
-    if (req.session.user) {
-        return res.redirect("/dashboard");
+            return res.redirect(
+                "/dashboard"
+            );
+        }
+
+        res.redirect(
+            "/auth/login"
+        );
     }
-
-    res.redirect("/auth/login");
-
-});
+);
 
 
-
-
-
-
-
+// ============================================
 // DASHBOARD ROUTE
+// ============================================
+
+app.get(
+    "/dashboard",
+    async (req, res) => {
+
+        // Check login
+        if (
+            !req.session ||
+            !req.session.user
+        ) {
+
+            return res.redirect(
+                "/auth/login"
+            );
+        }
 
 
-app.get("/dashboard", async (req, res) => {
+        try {
 
-    if (!req.session || !req.session.user) {
-        return res.redirect("/auth/login");
+            const user =
+                req.session.user;
+
+            const organizationId =
+                user.organizationId;
+
+
+            // ========================================
+            // Pending Invitations
+            // ========================================
+
+            const invitationResult =
+                await pool.query(
+                    `
+                    SELECT
+                        i.id,
+                        i.email,
+                        i.role,
+                        i.expires_at,
+                        o.name AS organization_name
+
+                    FROM invitations i
+
+                    JOIN organizations o
+                        ON o.id = i.organization_id
+
+                    WHERE LOWER(i.email) =
+                          LOWER($1)
+
+                      AND i.accepted_at IS NULL
+
+                      AND i.expires_at > NOW()
+
+                    ORDER BY i.created_at DESC
+                    `,
+                    [
+                        user.email
+                    ]
+                );
+
+
+            // ========================================
+            // Project Count
+            // ========================================
+
+            const projectResult =
+                await pool.query(
+                    `
+                    SELECT
+                        COUNT(*)::INTEGER AS count
+
+                    FROM projects
+
+                    WHERE organization_id = $1
+                    `,
+                    [
+                        organizationId
+                    ]
+                );
+
+
+            // ========================================
+            // Total Task Count
+            // ========================================
+
+            const taskResult =
+                await pool.query(
+                    `
+                    SELECT
+                        COUNT(*)::INTEGER AS count
+
+                    FROM tasks
+
+                    WHERE organization_id = $1
+                    `,
+                    [
+                        organizationId
+                    ]
+                );
+
+
+            // ========================================
+            // Completed Task Count
+            // ========================================
+
+            const completedResult =
+                await pool.query(
+                    `
+                    SELECT
+                        COUNT(*)::INTEGER AS count
+
+                    FROM tasks
+
+                    WHERE organization_id = $1
+
+                      AND status = 'DONE'
+                    `,
+                    [
+                        organizationId
+                    ]
+                );
+
+
+            // ========================================
+            // Team Member Count
+            // ========================================
+
+            const memberResult =
+                await pool.query(
+                    `
+                    SELECT
+                        COUNT(*)::INTEGER AS count
+
+                    FROM organization_members
+
+                    WHERE organization_id = $1
+                    `,
+                    [
+                        organizationId
+                    ]
+                );
+
+
+            // ========================================
+            // Task Status Statistics
+            // ========================================
+
+            const statusResult =
+                await pool.query(
+                    `
+                    SELECT
+                        status,
+                        COUNT(*)::INTEGER AS count
+
+                    FROM tasks
+
+                    WHERE organization_id = $1
+
+                    GROUP BY status
+
+                    ORDER BY
+                        CASE status
+
+                            WHEN 'TODO'
+                                THEN 1
+
+                            WHEN 'IN_PROGRESS'
+                                THEN 2
+
+                            WHEN 'REVIEW'
+                                THEN 3
+
+                            WHEN 'DONE'
+                                THEN 4
+
+                            ELSE 5
+
+                        END
+                    `,
+                    [
+                        organizationId
+                    ]
+                );
+
+
+            // ========================================
+            // Render Dashboard
+            // ========================================
+
+            res.render(
+                "dashboard/index",
+                {
+
+                    user: user,
+
+                    invitations:
+                        invitationResult.rows,
+
+                    projectCount:
+                        projectResult.rows[0].count,
+
+                    taskCount:
+                        taskResult.rows[0].count,
+
+                    completedCount:
+                        completedResult.rows[0].count,
+
+                    memberCount:
+                        memberResult.rows[0].count,
+
+                    taskStatuses:
+                        statusResult.rows
+
+                }
+            );
+
+        } catch (error) {
+
+            console.error(
+                "Dashboard error:",
+                error
+            );
+
+            res.status(500).send(
+                "Failed to load dashboard"
+            );
+        }
     }
-
-    try {
-
-        const user = req.session.user;
-
-        // Find pending invitations for this user's email
-        const invitationResult = await pool.query(
-            `
-            SELECT
-                i.id,
-                i.email,
-                i.role,
-                i.expires_at,
-                o.name AS organization_name
-            FROM invitations i
-            JOIN organizations o
-                ON o.id = i.organization_id
-            WHERE LOWER(i.email) = LOWER($1)
-              AND i.accepted_at IS NULL
-              AND i.expires_at > NOW()
-            ORDER BY i.created_at DESC
-            `,
-            [user.email]
-        );
-
-        res.render("dashboard/index", {
-            user: user,
-            invitations: invitationResult.rows
-        });
-
-    } catch (error) {
-
-        console.error(
-            "Dashboard error:",
-            error
-        );
-
-        res.status(500).send(
-            "Failed to load dashboard"
-        );
-    }
-});
+);
 
 
-
-
-
-
-
+// ============================================
 // DATABASE TEST ROUTE
+// ============================================
 
+app.get(
+    "/db-test",
+    async (req, res) => {
 
-app.get("/db-test", async (req, res) => {
+        try {
 
-    try {
+            const result =
+                await pool.query(
+                    "SELECT NOW()"
+                );
 
-        const result = await pool.query("SELECT NOW()");
+            res.json({
 
-        res.json({
+                success: true,
 
-            success: true,
+                message:
+                    "Database connected successfully",
 
-            message: "Database connected successfully",
+                time:
+                    result.rows[0].now
 
-            time: result.rows[0].now
+            });
 
-        });
+        } catch (error) {
 
-    } catch (error) {
+            console.error(
+                "Database test error:",
+                error
+            );
 
-        console.error("Database test error:", error);
+            res.status(500).json({
 
-        res.status(500).json({
+                success: false,
 
-            success: false,
+                message:
+                    "Database connection failed"
 
-            message: "Database connection failed"
-
-        });
-
+            });
+        }
     }
-
-});
-
+);
 
 
+// ============================================
+// DB INFO
+// ============================================
 
+app.get(
+    "/db-info",
+    async (req, res) => {
 
+        try {
 
+            const result =
+                await pool.query(
+                    `
+                    SELECT
 
+                        current_database()
+                            AS database,
 
+                        current_user
+                            AS user
+                    `
+                );
 
+            res.json(
+                result.rows[0]
+            );
 
-//db-info
-app.get("/db-info", async (req, res) => {
-    try {
-        const result = await pool.query(`
-            SELECT
-                current_database() AS database,
-                current_user AS user
-        `);
+        } catch (error) {
 
-        res.json(result.rows[0]);
+            res.status(500).json({
 
-    } catch (error) {
-        res.status(500).json({
-            error: error.message
-        });
+                error:
+                    error.message
+
+            });
+        }
     }
-});
+);
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+// ============================================
 // 404 ROUTE
+// ============================================
+
+app.use(
+    (req, res) => {
+
+        res.status(404).send(
+            "404 - Page Not Found"
+        );
+    }
+);
 
 
-app.use((req, res) => {
+// ============================================
+// START SERVER
+// ============================================
 
-    res.status(404).send("404 - Page Not Found");
+app.listen(
+    PORT,
+    () => {
 
-});
+        console.log(
+            `TeamFlow running at http://localhost:${PORT}`
+        );
 
-
-
-
-
-
-
-
-app.listen(PORT, () => {
-
-    console.log(
-        `TeamFlow running at http://localhost:${PORT}`
-    );
-
-});
+    }
+);
