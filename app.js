@@ -39,6 +39,10 @@ const organizationRoutes =
     require("./routes/organizationRoutes");
 
 
+const organizationApiRoutes =
+    require("./routes/api/organizationRoutes");
+
+
 const taskRoutes =
     require("./routes/taskRoutes");
 
@@ -79,7 +83,6 @@ app.set(
 
 // ============================================
 // RAZORPAY WEBHOOK
-// Must come before express.json()
 // ============================================
 
 app.post(
@@ -178,7 +181,7 @@ app.use(
 
 
 // ============================================
-// AUTH
+// AUTH ROUTES
 // ============================================
 
 app.use(
@@ -218,12 +221,22 @@ app.use(
 
 
 // ============================================
-// ORGANIZATION
+// WEB ORGANIZATION ROUTES
 // ============================================
 
 app.use(
     "/organizations",
     organizationRoutes
+);
+
+
+// ============================================
+// ORGANIZATION REST API
+// ============================================
+
+app.use(
+    "/api/organizations",
+    organizationApiRoutes
 );
 
 
@@ -275,6 +288,7 @@ app.get(
 
         }
 
+
         res.redirect(
             "/auth/login"
         );
@@ -315,21 +329,18 @@ app.get(
 
 
             // ========================================
-            // Invitations
+            // Pending Invitations
             // ========================================
 
             const invitationResult =
                 await pool.query(
                     `
                     SELECT
-
                         i.id,
                         i.email,
                         i.role,
                         i.expires_at,
-
-                        o.name
-                            AS organization_name
+                        o.name AS organization_name
 
                     FROM invitations i
 
@@ -354,7 +365,7 @@ app.get(
 
 
             // ========================================
-            // Project count
+            // Project Count
             // ========================================
 
             const projectResult =
@@ -366,8 +377,7 @@ app.get(
 
                     FROM projects
 
-                    WHERE organization_id =
-                          $1
+                    WHERE organization_id = $1
                     `,
                     [
                         organizationId
@@ -376,7 +386,7 @@ app.get(
 
 
             // ========================================
-            // Task count
+            // Task Count
             // ========================================
 
             const taskResult =
@@ -388,8 +398,7 @@ app.get(
 
                     FROM tasks
 
-                    WHERE organization_id =
-                          $1
+                    WHERE organization_id = $1
                     `,
                     [
                         organizationId
@@ -398,7 +407,7 @@ app.get(
 
 
             // ========================================
-            // Completed tasks
+            // Completed Task Count
             // ========================================
 
             const completedResult =
@@ -410,9 +419,7 @@ app.get(
 
                     FROM tasks
 
-                    WHERE organization_id =
-                          $1
-
+                    WHERE organization_id = $1
                       AND status = 'DONE'
                     `,
                     [
@@ -422,7 +429,7 @@ app.get(
 
 
             // ========================================
-            // Members
+            // Team Member Count
             // ========================================
 
             const memberResult =
@@ -434,8 +441,7 @@ app.get(
 
                     FROM organization_members
 
-                    WHERE organization_id =
-                          $1
+                    WHERE organization_id = $1
                     `,
                     [
                         organizationId
@@ -444,23 +450,20 @@ app.get(
 
 
             // ========================================
-            // Task statuses
+            // Task Status Statistics
             // ========================================
 
             const statusResult =
                 await pool.query(
                     `
                     SELECT
-
                         status,
-
                         COUNT(*)::INTEGER
                             AS count
 
                     FROM tasks
 
-                    WHERE organization_id =
-                          $1
+                    WHERE organization_id = $1
 
                     GROUP BY status
 
@@ -490,14 +493,14 @@ app.get(
 
 
             // ========================================
-            // Render dashboard
+            // Render Dashboard
             // ========================================
 
             res.render(
                 "dashboard/index",
                 {
 
-                    user: user,
+                    user,
 
                     invitations:
                         invitationResult.rows,
@@ -608,7 +611,6 @@ app.get(
                 await pool.query(
                     `
                     SELECT
-
                         current_database()
                             AS database,
 
