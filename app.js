@@ -68,7 +68,9 @@ const notificationApiRoutes =
 
 const subscriptionApiRoutes =
     require("./routes/api/subscriptionRoutes");
-
+   
+    const activityApiRoutes =
+    require("./routes/api/activityRoutes");
 
 // ============================================
 // SWAGGER
@@ -453,6 +455,17 @@ app.use(
     subscriptionApiRoutes
 );
 
+
+
+// ============================================
+// Activity API v1
+// /api/v1/activity
+// ============================================
+
+app.use(
+    "/api/v1/activity",
+    activityApiRoutes
+);
 
 // ============================================
 // HOME ROUTE
