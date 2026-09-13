@@ -11,61 +11,81 @@ const pgSession =
 require("dotenv").config();
 
 
+// ============================================
+// DATABASE
+// ============================================
+
 const pool =
     require("./config/db");
 
+
+// ============================================
+// WEBHOOK
+// ============================================
 
 const webhookController =
     require("./controllers/webhookController");
 
 
+// ============================================
+// WEB ROUTES
+// ============================================
+
 const authRoutes =
     require("./routes/authRoutes");
-
 
 const projectRoutes =
     require("./routes/projectRoutes");
 
-
-const projectApiRoutes =
-    require("./routes/api/projectRoutes");
-
-
-const taskApiRoutes =
-    require("./routes/api/taskRoutes");
-
-
 const organizationRoutes =
     require("./routes/organizationRoutes");
-
-
-const organizationApiRoutes =
-    require("./routes/api/organizationRoutes");
-
 
 const taskRoutes =
     require("./routes/taskRoutes");
 
-
 const subscriptionRoutes =
     require("./routes/subscriptionRoutes");
-
 
 const notificationRoutes =
     require("./routes/notificationRoutes");
 
 
-    const notificationApiRoutes =
+// ============================================
+// API ROUTES
+// ============================================
+
+const projectApiRoutes =
+    require("./routes/api/projectRoutes");
+
+const taskApiRoutes =
+    require("./routes/api/taskRoutes");
+
+const organizationApiRoutes =
+    require("./routes/api/organizationRoutes");
+
+const notificationApiRoutes =
     require("./routes/api/notificationRoutes");
 
+const subscriptionApiRoutes =
+    require("./routes/api/subscriptionRoutes");
 
-  const subscriptionApiRoutes =
-    require("./routes/api/subscriptionRoutes");  
 
+// ============================================
+// API ERROR MIDDLEWARE
+// ============================================
+
+const {
+    apiNotFound,
+    apiErrorHandler
+} = require("./middleware/errorMiddleware");
+
+
+// ============================================
+// APP
+// ============================================
 
 const app =
     express();
-
 
 const PORT =
     process.env.PORT || 3000;
@@ -91,6 +111,8 @@ app.set(
 
 // ============================================
 // RAZORPAY WEBHOOK
+// IMPORTANT:
+// Must come before express.json()
 // ============================================
 
 app.post(
@@ -135,6 +157,8 @@ app.use(
 
 // ============================================
 // SESSION
+// IMPORTANT:
+// Must come BEFORE routes
 // ============================================
 
 app.use(
@@ -174,6 +198,7 @@ app.use(
 
 // ============================================
 // GLOBAL USER
+// Makes user available in EJS
 // ============================================
 
 app.use(
@@ -189,8 +214,13 @@ app.use(
 
 
 // ============================================
-// AUTH ROUTES
+// WEB ROUTES
 // ============================================
+
+
+// --------------------------------------------
+// Authentication
+// --------------------------------------------
 
 app.use(
     "/auth",
@@ -198,9 +228,9 @@ app.use(
 );
 
 
-// ============================================
-// WEB PROJECT ROUTES
-// ============================================
+// --------------------------------------------
+// Projects
+// --------------------------------------------
 
 app.use(
     "/projects",
@@ -208,29 +238,9 @@ app.use(
 );
 
 
-// ============================================
-// PROJECT REST API
-// ============================================
-
-app.use(
-    "/api/projects",
-    projectApiRoutes
-);
-
-
-// ============================================
-// TASK REST API
-// ============================================
-
-app.use(
-    "/api",
-    taskApiRoutes
-);
-
-
-// ============================================
-// WEB ORGANIZATION ROUTES
-// ============================================
+// --------------------------------------------
+// Organizations
+// --------------------------------------------
 
 app.use(
     "/organizations",
@@ -238,39 +248,9 @@ app.use(
 );
 
 
-// ============================================
-// ORGANIZATION REST API
-// ============================================
-
-app.use(
-    "/api/organizations",
-    organizationApiRoutes
-);
-
-// ============================================
-// NOTIFICATION REST API
-// ============================================
-
-app.use(
-    "/api/notifications",
-    notificationApiRoutes
-);
-
-
-
-// ============================================
-// BILLING REST API
-// ============================================
-
-app.use(
-    "/api/billing",
-    subscriptionApiRoutes
-);
-
-
-// ============================================
-// BILLING
-// ============================================
+// --------------------------------------------
+// Billing
+// --------------------------------------------
 
 app.use(
     "/billing",
@@ -278,9 +258,9 @@ app.use(
 );
 
 
-// ============================================
-// WEB TASK ROUTES
-// ============================================
+// --------------------------------------------
+// Tasks
+// --------------------------------------------
 
 app.use(
     "/",
@@ -288,9 +268,9 @@ app.use(
 );
 
 
-// ============================================
-// NOTIFICATIONS
-// ============================================
+// --------------------------------------------
+// Notifications
+// --------------------------------------------
 
 app.use(
     "/notifications",
@@ -299,7 +279,68 @@ app.use(
 
 
 // ============================================
-// HOME
+// REST API ROUTES
+// ============================================
+
+
+// --------------------------------------------
+// Project API
+// /api/projects
+// --------------------------------------------
+
+app.use(
+    "/api/projects",
+    projectApiRoutes
+);
+
+
+// --------------------------------------------
+// Task API
+// /api/projects/:projectId/tasks
+// /api/tasks/:taskId
+// --------------------------------------------
+
+app.use(
+    "/api",
+    taskApiRoutes
+);
+
+
+// --------------------------------------------
+// Organization API
+// /api/organizations
+// --------------------------------------------
+
+app.use(
+    "/api/organizations",
+    organizationApiRoutes
+);
+
+
+// --------------------------------------------
+// Notification API
+// /api/notifications
+// --------------------------------------------
+
+app.use(
+    "/api/notifications",
+    notificationApiRoutes
+);
+
+
+// --------------------------------------------
+// Billing API
+// /api/billing
+// --------------------------------------------
+
+app.use(
+    "/api/billing",
+    subscriptionApiRoutes
+);
+
+
+// ============================================
+// HOME ROUTE
 // ============================================
 
 app.get(
@@ -307,6 +348,7 @@ app.get(
     (req, res) => {
 
         if (
+            req.session &&
             req.session.user
         ) {
 
@@ -315,7 +357,6 @@ app.get(
             );
 
         }
-
 
         res.redirect(
             "/auth/login"
@@ -334,6 +375,7 @@ app.get(
 
     async (req, res) => {
 
+        // Check authentication
         if (
             !req.session ||
             !req.session.user
@@ -400,8 +442,7 @@ app.get(
                 await pool.query(
                     `
                     SELECT
-                        COUNT(*)::INTEGER
-                            AS count
+                        COUNT(*)::INTEGER AS count
 
                     FROM projects
 
@@ -421,8 +462,7 @@ app.get(
                 await pool.query(
                     `
                     SELECT
-                        COUNT(*)::INTEGER
-                            AS count
+                        COUNT(*)::INTEGER AS count
 
                     FROM tasks
 
@@ -442,12 +482,12 @@ app.get(
                 await pool.query(
                     `
                     SELECT
-                        COUNT(*)::INTEGER
-                            AS count
+                        COUNT(*)::INTEGER AS count
 
                     FROM tasks
 
                     WHERE organization_id = $1
+
                       AND status = 'DONE'
                     `,
                     [
@@ -464,8 +504,7 @@ app.get(
                 await pool.query(
                     `
                     SELECT
-                        COUNT(*)::INTEGER
-                            AS count
+                        COUNT(*)::INTEGER AS count
 
                     FROM organization_members
 
@@ -486,8 +525,7 @@ app.get(
                     `
                     SELECT
                         status,
-                        COUNT(*)::INTEGER
-                            AS count
+                        COUNT(*)::INTEGER AS count
 
                     FROM tasks
 
@@ -573,7 +611,7 @@ app.get(
 
 
 // ============================================
-// DB TEST
+// DATABASE TEST
 // ============================================
 
 app.get(
@@ -625,7 +663,7 @@ app.get(
 
 
 // ============================================
-// DB INFO
+// DATABASE INFO
 // ============================================
 
 app.get(
@@ -668,7 +706,18 @@ app.get(
 
 
 // ============================================
-// 404
+// API 404 HANDLER
+// IMPORTANT:
+// Must come after all API routes
+// ============================================
+
+app.use(
+    apiNotFound
+);
+
+
+// ============================================
+// NORMAL 404 HANDLER
 // ============================================
 
 app.use(
@@ -679,6 +728,17 @@ app.use(
         );
 
     }
+);
+
+
+// ============================================
+// GLOBAL ERROR HANDLER
+// IMPORTANT:
+// Must be the final middleware
+// ============================================
+
+app.use(
+    apiErrorHandler
 );
 
 
