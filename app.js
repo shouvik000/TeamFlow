@@ -55,6 +55,10 @@ const notificationRoutes =
     require("./routes/notificationRoutes");
 
 
+    const notificationApiRoutes =
+    require("./routes/api/notificationRoutes");
+
+
 const app =
     express();
 
@@ -238,6 +242,19 @@ app.use(
     "/api/organizations",
     organizationApiRoutes
 );
+
+// ============================================
+// NOTIFICATION REST API
+// ============================================
+
+app.use(
+    "/api/notifications",
+    notificationApiRoutes
+);
+
+
+
+
 
 
 // ============================================
