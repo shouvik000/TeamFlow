@@ -11,15 +11,31 @@ const {
 
 // ============================================
 // Get all tasks for a project
+//
 // GET /api/projects/:projectId/tasks
+//
+// Query parameters:
+//
+// ?search=dashboard
+// ?status=TODO
+// ?priority=HIGH
+// ?assignedTo=8
+// ?sortBy=created_at
+// ?sortOrder=desc
+// ?page=1
+// ?limit=10
+//
 // ============================================
 
 exports.getTasks = async (req, res) => {
 
-    const { projectId } = req.params;
+    const { projectId } =
+        req.params;
+
 
     const organizationId =
         req.session.user.organizationId;
+
 
     try {
 
@@ -31,6 +47,7 @@ exports.getTasks = async (req, res) => {
             await pool.query(
                 `
                 SELECT
+
                     id,
                     name,
                     description,
@@ -39,6 +56,7 @@ exports.getTasks = async (req, res) => {
                 FROM projects
 
                 WHERE id = $1
+
                   AND organization_id = $2
                 `,
                 [
@@ -48,7 +66,9 @@ exports.getTasks = async (req, res) => {
             );
 
 
-        if (projectResult.rows.length === 0) {
+        if (
+            projectResult.rows.length === 0
+        ) {
 
             return res.status(404).json({
 
@@ -62,8 +82,355 @@ exports.getTasks = async (req, res) => {
 
 
         // ========================================
+        // Pagination
+        // ========================================
+
+        const page =
+            Math.max(
+                parseInt(req.query.page, 10) || 1,
+                1
+            );
+
+
+        const limit =
+            Math.min(
+                Math.max(
+                    parseInt(req.query.limit, 10) || 10,
+                    1
+                ),
+                100
+            );
+
+
+        const offset =
+            (page - 1) * limit;
+
+
+        // ========================================
+        // Search
+        // ========================================
+
+        const search =
+            req.query.search
+                ? req.query.search.trim()
+                : "";
+
+
+        // ========================================
+        // Status filter
+        // ========================================
+
+        const status =
+            req.query.status
+                ? req.query.status.trim().toUpperCase()
+                : "";
+
+
+        const allowedStatuses = [
+            "TODO",
+            "IN_PROGRESS",
+            "REVIEW",
+            "DONE"
+        ];
+
+
+        if (
+            status &&
+            !allowedStatuses.includes(status)
+        ) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "Invalid task status"
+
+            });
+        }
+
+
+        // ========================================
+        // Priority filter
+        // ========================================
+
+        const priority =
+            req.query.priority
+                ? req.query.priority.trim().toUpperCase()
+                : "";
+
+
+        const allowedPriorities = [
+            "LOW",
+            "MEDIUM",
+            "HIGH",
+            "URGENT"
+        ];
+
+
+        if (
+            priority &&
+            !allowedPriorities.includes(
+                priority
+            )
+        ) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "Invalid task priority"
+
+            });
+        }
+
+
+        // ========================================
+        // Assignee filter
+        // ========================================
+
+        const assignedTo =
+            req.query.assignedTo
+                ? parseInt(
+                    req.query.assignedTo,
+                    10
+                )
+                : null;
+
+
+        if (
+            req.query.assignedTo &&
+            (
+                !Number.isInteger(
+                    assignedTo
+                ) ||
+                assignedTo <= 0
+            )
+        ) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "Invalid assignedTo value"
+
+            });
+        }
+
+
+        // ========================================
+        // Sorting
+        // ========================================
+
+        const allowedSortFields = {
+
+            id: "t.id",
+
+            title: "t.title",
+
+            status: "t.status",
+
+            priority: "t.priority",
+
+            due_date: "t.due_date",
+
+            created_at: "t.created_at",
+
+            updated_at: "t.updated_at"
+
+        };
+
+
+        const sortBy =
+            req.query.sortBy || "created_at";
+
+
+        const sortColumn =
+            allowedSortFields[sortBy];
+
+
+        if (!sortColumn) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "Invalid sort field"
+
+            });
+        }
+
+
+        const sortOrder =
+            String(
+                req.query.sortOrder || "desc"
+            ).toLowerCase();
+
+
+        if (
+            !["asc", "desc"].includes(
+                sortOrder
+            )
+        ) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "Invalid sort order"
+
+            });
+        }
+
+
+        // ========================================
+        // Dynamic WHERE conditions
+        // ========================================
+
+        const conditions = [
+
+            "t.project_id = $1",
+
+            "t.organization_id = $2"
+
+        ];
+
+
+        const values = [
+
+            projectId,
+
+            organizationId
+
+        ];
+
+
+        let parameterIndex = 3;
+
+
+        // Search
+        if (search) {
+
+            conditions.push(
+                `
+                (
+                    t.title ILIKE $${parameterIndex}
+                    OR t.description ILIKE $${parameterIndex}
+                )
+                `
+            );
+
+
+            values.push(
+                `%${search}%`
+            );
+
+
+            parameterIndex++;
+
+        }
+
+
+        // Status
+        if (status) {
+
+            conditions.push(
+                `t.status = $${parameterIndex}`
+            );
+
+
+            values.push(
+                status
+            );
+
+
+            parameterIndex++;
+
+        }
+
+
+        // Priority
+        if (priority) {
+
+            conditions.push(
+                `t.priority = $${parameterIndex}`
+            );
+
+
+            values.push(
+                priority
+            );
+
+
+            parameterIndex++;
+
+        }
+
+
+        // Assigned user
+        if (assignedTo) {
+
+            conditions.push(
+                `t.assigned_to = $${parameterIndex}`
+            );
+
+
+            values.push(
+                assignedTo
+            );
+
+
+            parameterIndex++;
+
+        }
+
+
+        const whereClause =
+            conditions.join(
+                " AND "
+            );
+
+
+        // ========================================
+        // Total count
+        // ========================================
+
+        const countResult =
+            await pool.query(
+                `
+                SELECT
+                    COUNT(*)::INTEGER AS total
+
+                FROM tasks t
+
+                WHERE ${whereClause}
+                `,
+                values
+            );
+
+
+        const total =
+            countResult.rows[0].total;
+
+
+        // ========================================
         // Get tasks
         // ========================================
+
+        const taskValues = [
+
+            ...values,
+
+            limit,
+
+            offset
+
+        ];
+
 
         const taskResult =
             await pool.query(
@@ -102,17 +469,26 @@ exports.getTasks = async (req, res) => {
                     ON creator.id =
                        t.created_by
 
-                WHERE t.project_id = $1
-                  AND t.organization_id = $2
+                WHERE ${whereClause}
 
                 ORDER BY
-                    t.created_at DESC
+                    ${sortColumn}
+                    ${sortOrder.toUpperCase()}
+
+                LIMIT $${parameterIndex}
+
+                OFFSET $${parameterIndex + 1}
                 `,
-                [
-                    projectId,
-                    organizationId
-                ]
+                taskValues
             );
+
+
+        const totalPages =
+            total === 0
+                ? 0
+                : Math.ceil(
+                    total / limit
+                );
 
 
         res.status(200).json({
@@ -124,6 +500,44 @@ exports.getTasks = async (req, res) => {
 
             project:
                 projectResult.rows[0],
+
+            pagination: {
+
+                page,
+
+                limit,
+
+                total,
+
+                totalPages,
+
+                hasNextPage:
+                    page < totalPages,
+
+                hasPreviousPage:
+                    page > 1
+
+            },
+
+            filters: {
+
+                search:
+                    search || null,
+
+                status:
+                    status || null,
+
+                priority:
+                    priority || null,
+
+                assignedTo:
+                    assignedTo || null,
+
+                sortBy,
+
+                sortOrder
+
+            },
 
             tasks:
                 taskResult.rows
@@ -145,6 +559,7 @@ exports.getTasks = async (req, res) => {
                 "Failed to load tasks"
 
         });
+
     }
 };
 
@@ -156,10 +571,13 @@ exports.getTasks = async (req, res) => {
 
 exports.getTask = async (req, res) => {
 
-    const { taskId } = req.params;
+    const { taskId } =
+        req.params;
+
 
     const organizationId =
         req.session.user.organizationId;
+
 
     try {
 
@@ -207,7 +625,9 @@ exports.getTask = async (req, res) => {
                        t.created_by
 
                 WHERE t.id = $1
+
                   AND t.organization_id = $2
+
                   AND p.organization_id = $2
                 `,
                 [
@@ -217,7 +637,9 @@ exports.getTask = async (req, res) => {
             );
 
 
-        if (result.rows.length === 0) {
+        if (
+            result.rows.length === 0
+        ) {
 
             return res.status(404).json({
 
@@ -254,6 +676,7 @@ exports.getTask = async (req, res) => {
                 "Failed to load task"
 
         });
+
     }
 };
 
@@ -265,7 +688,9 @@ exports.getTask = async (req, res) => {
 
 exports.createTask = async (req, res) => {
 
-    const { projectId } = req.params;
+    const { projectId } =
+        req.params;
+
 
     const {
         title,
@@ -279,13 +704,10 @@ exports.createTask = async (req, res) => {
     const organizationId =
         req.session.user.organizationId;
 
+
     const userId =
         req.session.user.id;
 
-
-    // ========================================
-    // Validate title
-    // ========================================
 
     if (
         !title ||
@@ -302,10 +724,6 @@ exports.createTask = async (req, res) => {
         });
     }
 
-
-    // ========================================
-    // Validate priority
-    // ========================================
 
     const allowedPriorities = [
         "LOW",
@@ -338,10 +756,6 @@ exports.createTask = async (req, res) => {
 
     try {
 
-        // ========================================
-        // Verify project
-        // ========================================
-
         const projectResult =
             await pool.query(
                 `
@@ -352,6 +766,7 @@ exports.createTask = async (req, res) => {
                 FROM projects
 
                 WHERE id = $1
+
                   AND organization_id = $2
                 `,
                 [
@@ -361,7 +776,9 @@ exports.createTask = async (req, res) => {
             );
 
 
-        if (projectResult.rows.length === 0) {
+        if (
+            projectResult.rows.length === 0
+        ) {
 
             return res.status(404).json({
 
@@ -378,10 +795,6 @@ exports.createTask = async (req, res) => {
             projectResult.rows[0];
 
 
-        // ========================================
-        // Validate assignee
-        // ========================================
-
         let assigneeId = null;
 
 
@@ -391,6 +804,7 @@ exports.createTask = async (req, res) => {
                 await pool.query(
                     `
                     SELECT
+
                         u.id,
                         u.name,
                         u.email
@@ -402,6 +816,7 @@ exports.createTask = async (req, res) => {
                            om.user_id
 
                     WHERE om.organization_id = $1
+
                       AND u.id = $2
                     `,
                     [
@@ -430,10 +845,6 @@ exports.createTask = async (req, res) => {
                 memberResult.rows[0].id;
         }
 
-
-        // ========================================
-        // Create task
-        // ========================================
 
         const taskResult =
             await pool.query(
@@ -479,14 +890,21 @@ exports.createTask = async (req, res) => {
                 `,
                 [
                     projectId,
+
                     organizationId,
+
                     title.trim(),
+
                     description
                         ? description.trim()
                         : null,
+
                     selectedPriority,
+
                     assigneeId,
+
                     dueDate || null,
+
                     userId
                 ]
             );
@@ -495,10 +913,6 @@ exports.createTask = async (req, res) => {
         const task =
             taskResult.rows[0];
 
-
-        // ========================================
-        // Activity log
-        // ========================================
 
         await createActivityLog({
 
@@ -520,10 +934,6 @@ exports.createTask = async (req, res) => {
 
         });
 
-
-        // ========================================
-        // Notification
-        // ========================================
 
         if (assigneeId) {
 
@@ -550,6 +960,7 @@ exports.createTask = async (req, res) => {
                     task.id
 
             });
+
         }
 
 
@@ -579,6 +990,7 @@ exports.createTask = async (req, res) => {
                 "Failed to create task"
 
         });
+
     }
 };
 
@@ -590,7 +1002,9 @@ exports.createTask = async (req, res) => {
 
 exports.updateTask = async (req, res) => {
 
-    const { taskId } = req.params;
+    const { taskId } =
+        req.params;
+
 
     const {
         title,
@@ -605,13 +1019,10 @@ exports.updateTask = async (req, res) => {
     const organizationId =
         req.session.user.organizationId;
 
+
     const userId =
         req.session.user.id;
 
-
-    // ========================================
-    // Validate title
-    // ========================================
 
     if (
         !title ||
@@ -628,10 +1039,6 @@ exports.updateTask = async (req, res) => {
         });
     }
 
-
-    // ========================================
-    // Validate status
-    // ========================================
 
     const allowedStatuses = [
         "TODO",
@@ -661,10 +1068,6 @@ exports.updateTask = async (req, res) => {
         });
     }
 
-
-    // ========================================
-    // Validate priority
-    // ========================================
 
     const allowedPriorities = [
         "LOW",
@@ -697,10 +1100,6 @@ exports.updateTask = async (req, res) => {
 
     try {
 
-        // ========================================
-        // Get old task
-        // ========================================
-
         const oldTaskResult =
             await pool.query(
                 `
@@ -716,6 +1115,7 @@ exports.updateTask = async (req, res) => {
                 FROM tasks
 
                 WHERE id = $1
+
                   AND organization_id = $2
                 `,
                 [
@@ -744,10 +1144,6 @@ exports.updateTask = async (req, res) => {
             oldTaskResult.rows[0];
 
 
-        // ========================================
-        // Validate assignee
-        // ========================================
-
         let assigneeId = null;
 
 
@@ -766,6 +1162,7 @@ exports.updateTask = async (req, res) => {
                            om.user_id
 
                     WHERE om.organization_id = $1
+
                       AND u.id = $2
                     `,
                     [
@@ -792,12 +1189,9 @@ exports.updateTask = async (req, res) => {
 
             assigneeId =
                 memberResult.rows[0].id;
+
         }
 
-
-        // ========================================
-        // Update task
-        // ========================================
 
         const updatedTaskResult =
             await pool.query(
@@ -816,6 +1210,7 @@ exports.updateTask = async (req, res) => {
                         CURRENT_TIMESTAMP
 
                 WHERE id = $7
+
                   AND organization_id = $8
 
                 RETURNING
@@ -859,10 +1254,6 @@ exports.updateTask = async (req, res) => {
             updatedTaskResult.rows[0];
 
 
-        // ========================================
-        // Activity log
-        // ========================================
-
         let descriptionText =
             `Updated task "${updatedTask.title}"`;
 
@@ -874,6 +1265,7 @@ exports.updateTask = async (req, res) => {
 
             descriptionText +=
                 ` | Status: ${oldTask.status} → ${updatedTask.status}`;
+
         }
 
 
@@ -884,6 +1276,7 @@ exports.updateTask = async (req, res) => {
 
             descriptionText +=
                 ` | Priority: ${oldTask.priority} → ${updatedTask.priority}`;
+
         }
 
 
@@ -907,10 +1300,6 @@ exports.updateTask = async (req, res) => {
 
         });
 
-
-        // ========================================
-        // Notification
-        // ========================================
 
         if (
             assigneeId &&
@@ -941,6 +1330,7 @@ exports.updateTask = async (req, res) => {
                     updatedTask.id
 
             });
+
         }
 
 
@@ -971,6 +1361,7 @@ exports.updateTask = async (req, res) => {
                 "Failed to update task"
 
         });
+
     }
 };
 
@@ -982,20 +1373,19 @@ exports.updateTask = async (req, res) => {
 
 exports.deleteTask = async (req, res) => {
 
-    const { taskId } = req.params;
+    const { taskId } =
+        req.params;
+
 
     const organizationId =
         req.session.user.organizationId;
+
 
     const userId =
         req.session.user.id;
 
 
     try {
-
-        // ========================================
-        // Find task
-        // ========================================
 
         const taskResult =
             await pool.query(
@@ -1009,6 +1399,7 @@ exports.deleteTask = async (req, res) => {
                 FROM tasks
 
                 WHERE id = $1
+
                   AND organization_id = $2
                 `,
                 [
@@ -1018,7 +1409,9 @@ exports.deleteTask = async (req, res) => {
             );
 
 
-        if (taskResult.rows.length === 0) {
+        if (
+            taskResult.rows.length === 0
+        ) {
 
             return res.status(404).json({
 
@@ -1035,15 +1428,12 @@ exports.deleteTask = async (req, res) => {
             taskResult.rows[0];
 
 
-        // ========================================
-        // Delete
-        // ========================================
-
         await pool.query(
             `
             DELETE FROM tasks
 
             WHERE id = $1
+
               AND organization_id = $2
             `,
             [
@@ -1052,10 +1442,6 @@ exports.deleteTask = async (req, res) => {
             ]
         );
 
-
-        // ========================================
-        // Activity log
-        // ========================================
 
         await createActivityLog({
 
@@ -1104,5 +1490,6 @@ exports.deleteTask = async (req, res) => {
                 "Failed to delete task"
 
         });
+
     }
 };

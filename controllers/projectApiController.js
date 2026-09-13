@@ -4,6 +4,14 @@ const pool = require("../config/db");
 // ============================================
 // Get all projects
 // GET /api/projects
+//
+// Query parameters:
+// ?search=team
+// ?status=ACTIVE
+// ?sortBy=created_at
+// ?sortOrder=desc
+// ?page=1
+// ?limit=10
 // ============================================
 
 exports.getProjects = async (req, res) => {
@@ -11,42 +19,311 @@ exports.getProjects = async (req, res) => {
     const organizationId =
         req.session.user.organizationId;
 
+
     try {
 
-        const result = await pool.query(
-            `
-            SELECT
-                p.id,
-                p.name,
-                p.description,
-                p.status,
-                p.created_at,
-                p.updated_at,
-                p.created_by,
-                u.name AS created_by_name
+        // ========================================
+        // Pagination
+        // ========================================
 
-            FROM projects p
+        const page =
+            Math.max(
+                parseInt(req.query.page, 10) || 1,
+                1
+            );
 
-            JOIN users u
-                ON u.id = p.created_by
 
-            WHERE p.organization_id = $1
+        const limit =
+            Math.min(
+                Math.max(
+                    parseInt(req.query.limit, 10) || 10,
+                    1
+                ),
+                100
+            );
 
-            ORDER BY p.created_at DESC
-            `,
-            [
-                organizationId
-            ]
-        );
+
+        const offset =
+            (page - 1) * limit;
+
+
+        // ========================================
+        // Search
+        // ========================================
+
+        const search =
+            req.query.search
+                ? req.query.search.trim()
+                : "";
+
+
+        // ========================================
+        // Filter
+        // ========================================
+
+        const status =
+            req.query.status
+                ? req.query.status.trim().toUpperCase()
+                : "";
+
+
+        const allowedStatuses = [
+            "ACTIVE",
+            "ARCHIVED"
+        ];
+
+
+        if (
+            status &&
+            !allowedStatuses.includes(status)
+        ) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "Invalid project status"
+
+            });
+        }
+
+
+        // ========================================
+        // Sorting
+        // ========================================
+
+        const allowedSortFields = {
+
+            id: "p.id",
+
+            name: "p.name",
+
+            status: "p.status",
+
+            created_at: "p.created_at",
+
+            updated_at: "p.updated_at"
+
+        };
+
+
+        const sortBy =
+            req.query.sortBy || "created_at";
+
+
+        const sortColumn =
+            allowedSortFields[sortBy];
+
+
+        if (!sortColumn) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "Invalid sort field"
+
+            });
+        }
+
+
+        const sortOrder =
+            String(
+                req.query.sortOrder || "desc"
+            ).toLowerCase();
+
+
+        if (
+            !["asc", "desc"].includes(sortOrder)
+        ) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "Invalid sort order"
+
+            });
+        }
+
+
+        // ========================================
+        // Dynamic WHERE clause
+        // ========================================
+
+        const conditions = [
+            "p.organization_id = $1"
+        ];
+
+
+        const values = [
+            organizationId
+        ];
+
+
+        let parameterIndex = 2;
+
+
+        // Search by project name/description
+        if (search) {
+
+            conditions.push(
+                `
+                (
+                    p.name ILIKE $${parameterIndex}
+                    OR p.description ILIKE $${parameterIndex}
+                )
+                `
+            );
+
+            values.push(
+                `%${search}%`
+            );
+
+            parameterIndex++;
+
+        }
+
+
+        // Filter by status
+        if (status) {
+
+            conditions.push(
+                `p.status = $${parameterIndex}`
+            );
+
+            values.push(
+                status
+            );
+
+            parameterIndex++;
+
+        }
+
+
+        const whereClause =
+            conditions.join(" AND ");
+
+
+        // ========================================
+        // Total count
+        // ========================================
+
+        const countResult =
+            await pool.query(
+                `
+                SELECT
+                    COUNT(*)::INTEGER AS total
+
+                FROM projects p
+
+                WHERE ${whereClause}
+                `,
+                values
+            );
+
+
+        const total =
+            countResult.rows[0].total;
+
+
+        // ========================================
+        // Get projects
+        // ========================================
+
+        const projectValues = [
+            ...values,
+            limit,
+            offset
+        ];
+
+
+        const result =
+            await pool.query(
+                `
+                SELECT
+
+                    p.id,
+                    p.name,
+                    p.description,
+                    p.status,
+                    p.created_at,
+                    p.updated_at,
+                    p.created_by,
+
+                    u.name AS created_by_name
+
+                FROM projects p
+
+                JOIN users u
+                    ON u.id = p.created_by
+
+                WHERE ${whereClause}
+
+                ORDER BY
+                    ${sortColumn}
+                    ${sortOrder.toUpperCase()}
+
+                LIMIT $${parameterIndex}
+
+                OFFSET $${parameterIndex + 1}
+                `,
+                projectValues
+            );
+
+
+        const totalPages =
+            total === 0
+                ? 0
+                : Math.ceil(
+                    total / limit
+                );
 
 
         res.status(200).json({
 
             success: true,
 
-            count: result.rows.length,
+            count:
+                result.rows.length,
 
-            projects: result.rows
+            pagination: {
+
+                page,
+
+                limit,
+
+                total,
+
+                totalPages,
+
+                hasNextPage:
+                    page < totalPages,
+
+                hasPreviousPage:
+                    page > 1
+
+            },
+
+            filters: {
+
+                search:
+                    search || null,
+
+                status:
+                    status || null,
+
+                sortBy,
+
+                sortOrder
+
+            },
+
+            projects:
+                result.rows
 
         });
 
@@ -65,6 +342,7 @@ exports.getProjects = async (req, res) => {
                 "Failed to load projects"
 
         });
+
     }
 };
 
@@ -79,40 +357,47 @@ exports.getProject = async (req, res) => {
     const { projectId } =
         req.params;
 
+
     const organizationId =
         req.session.user.organizationId;
 
+
     try {
 
-        const result = await pool.query(
-            `
-            SELECT
-                p.id,
-                p.name,
-                p.description,
-                p.status,
-                p.created_at,
-                p.updated_at,
-                p.created_by,
-                u.name AS created_by_name
+        const result =
+            await pool.query(
+                `
+                SELECT
 
-            FROM projects p
+                    p.id,
+                    p.name,
+                    p.description,
+                    p.status,
+                    p.created_at,
+                    p.updated_at,
+                    p.created_by,
 
-            JOIN users u
-                ON u.id = p.created_by
+                    u.name AS created_by_name
 
-            WHERE p.id = $1
+                FROM projects p
 
-              AND p.organization_id = $2
-            `,
-            [
-                projectId,
-                organizationId
-            ]
-        );
+                JOIN users u
+                    ON u.id = p.created_by
+
+                WHERE p.id = $1
+
+                  AND p.organization_id = $2
+                `,
+                [
+                    projectId,
+                    organizationId
+                ]
+            );
 
 
-        if (result.rows.length === 0) {
+        if (
+            result.rows.length === 0
+        ) {
 
             return res.status(404).json({
 
@@ -149,6 +434,7 @@ exports.getProject = async (req, res) => {
                 "Failed to load project"
 
         });
+
     }
 };
 
@@ -185,6 +471,7 @@ exports.createProject = async (req, res) => {
     const organizationId =
         req.session.user.organizationId;
 
+
     const userId =
         req.session.user.id;
 
@@ -211,6 +498,7 @@ exports.createProject = async (req, res) => {
                 )
 
                 RETURNING
+
                     id,
                     name,
                     description,
@@ -221,10 +509,13 @@ exports.createProject = async (req, res) => {
                 `,
                 [
                     organizationId,
+
                     name.trim(),
+
                     description
                         ? description.trim()
                         : null,
+
                     userId
                 ]
             );
@@ -260,6 +551,7 @@ exports.createProject = async (req, res) => {
                 "Failed to create project"
 
         });
+
     }
 };
 
@@ -273,6 +565,7 @@ exports.updateProject = async (req, res) => {
 
     const { projectId } =
         req.params;
+
 
     const {
         name,
@@ -330,46 +623,52 @@ exports.updateProject = async (req, res) => {
 
     try {
 
-        const result = await pool.query(
-            `
-            UPDATE projects
+        const result =
+            await pool.query(
+                `
+                UPDATE projects
 
-            SET
-                name = $1,
-                description = $2,
-                status = $3,
-                updated_at = CURRENT_TIMESTAMP
+                SET
 
-            WHERE id = $4
+                    name = $1,
+                    description = $2,
+                    status = $3,
+                    updated_at =
+                        CURRENT_TIMESTAMP
 
-              AND organization_id = $5
+                WHERE id = $4
 
-            RETURNING
-                id,
-                name,
-                description,
-                status,
-                created_at,
-                updated_at,
-                created_by
-            `,
-            [
-                name.trim(),
+                  AND organization_id = $5
 
-                description
-                    ? description.trim()
-                    : null,
+                RETURNING
 
-                selectedStatus,
+                    id,
+                    name,
+                    description,
+                    status,
+                    created_at,
+                    updated_at,
+                    created_by
+                `,
+                [
+                    name.trim(),
 
-                projectId,
+                    description
+                        ? description.trim()
+                        : null,
 
-                organizationId
-            ]
-        );
+                    selectedStatus,
+
+                    projectId,
+
+                    organizationId
+                ]
+            );
 
 
-        if (result.rows.length === 0) {
+        if (
+            result.rows.length === 0
+        ) {
 
             return res.status(404).json({
 
@@ -409,6 +708,7 @@ exports.updateProject = async (req, res) => {
                 "Failed to update project"
 
         });
+
     }
 };
 
@@ -423,32 +723,36 @@ exports.deleteProject = async (req, res) => {
     const { projectId } =
         req.params;
 
+
     const organizationId =
         req.session.user.organizationId;
 
 
     try {
 
-        const result = await pool.query(
-            `
-            DELETE FROM projects
+        const result =
+            await pool.query(
+                `
+                DELETE FROM projects
 
-            WHERE id = $1
+                WHERE id = $1
 
-              AND organization_id = $2
+                  AND organization_id = $2
 
-            RETURNING
-                id,
-                name
-            `,
-            [
-                projectId,
-                organizationId
-            ]
-        );
+                RETURNING
+                    id,
+                    name
+                `,
+                [
+                    projectId,
+                    organizationId
+                ]
+            );
 
 
-        if (result.rows.length === 0) {
+        if (
+            result.rows.length === 0
+        ) {
 
             return res.status(404).json({
 
@@ -488,5 +792,6 @@ exports.deleteProject = async (req, res) => {
                 "Failed to delete project"
 
         });
+
     }
 };
