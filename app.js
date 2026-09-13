@@ -1,12 +1,7 @@
 const express = require("express");
-
 const path = require("path");
-
-const session =
-    require("express-session");
-
-const pgSession =
-    require("connect-pg-simple")(session);
+const session = require("express-session");
+const pgSession = require("connect-pg-simple")(session);
 
 require("dotenv").config();
 
@@ -15,12 +10,11 @@ require("dotenv").config();
 // DATABASE
 // ============================================
 
-const pool =
-    require("./config/db");
+const pool = require("./config/db");
 
 
 // ============================================
-// WEBHOOK
+// WEB CONTROLLER
 // ============================================
 
 const webhookController =
@@ -71,7 +65,18 @@ const subscriptionApiRoutes =
 
 
 // ============================================
-// API ERROR MIDDLEWARE
+// SWAGGER
+// ============================================
+
+const swaggerUi =
+    require("swagger-ui-express");
+
+const swaggerDocument =
+    require("./config/swagger");
+
+
+// ============================================
+// API ERROR HANDLING
 // ============================================
 
 const {
@@ -81,11 +86,12 @@ const {
 
 
 // ============================================
-// APP
+// CREATE EXPRESS APP
+// IMPORTANT:
+// app MUST be created before app.use()
 // ============================================
 
-const app =
-    express();
+const app = express();
 
 const PORT =
     process.env.PORT || 3000;
@@ -105,6 +111,22 @@ app.set(
     path.join(
         __dirname,
         "views"
+    )
+);
+
+
+// ============================================
+// SWAGGER API DOCUMENTATION
+// ============================================
+
+app.use(
+    "/api-docs",
+    swaggerUi.serve,
+    swaggerUi.setup(
+        swaggerDocument,
+        {
+            explorer: true
+        }
     )
 );
 
@@ -158,7 +180,7 @@ app.use(
 // ============================================
 // SESSION
 // IMPORTANT:
-// Must come BEFORE routes
+// Must come BEFORE protected routes
 // ============================================
 
 app.use(
@@ -198,7 +220,7 @@ app.use(
 
 // ============================================
 // GLOBAL USER
-// Makes user available in EJS
+// Makes logged-in user available in EJS
 // ============================================
 
 app.use(
@@ -296,6 +318,7 @@ app.use(
 
 // --------------------------------------------
 // Task API
+//
 // /api/projects/:projectId/tasks
 // /api/tasks/:taskId
 // --------------------------------------------
@@ -358,6 +381,7 @@ app.get(
 
         }
 
+
         res.redirect(
             "/auth/login"
         );
@@ -375,7 +399,10 @@ app.get(
 
     async (req, res) => {
 
-        // Check authentication
+        // ========================================
+        // Authentication check
+        // ========================================
+
         if (
             !req.session ||
             !req.session.user
@@ -442,7 +469,8 @@ app.get(
                 await pool.query(
                     `
                     SELECT
-                        COUNT(*)::INTEGER AS count
+                        COUNT(*)::INTEGER
+                            AS count
 
                     FROM projects
 
@@ -455,14 +483,15 @@ app.get(
 
 
             // ========================================
-            // Task Count
+            // Total Task Count
             // ========================================
 
             const taskResult =
                 await pool.query(
                     `
                     SELECT
-                        COUNT(*)::INTEGER AS count
+                        COUNT(*)::INTEGER
+                            AS count
 
                     FROM tasks
 
@@ -482,7 +511,8 @@ app.get(
                 await pool.query(
                     `
                     SELECT
-                        COUNT(*)::INTEGER AS count
+                        COUNT(*)::INTEGER
+                            AS count
 
                     FROM tasks
 
@@ -504,7 +534,8 @@ app.get(
                 await pool.query(
                     `
                     SELECT
-                        COUNT(*)::INTEGER AS count
+                        COUNT(*)::INTEGER
+                            AS count
 
                     FROM organization_members
 
@@ -525,7 +556,8 @@ app.get(
                     `
                     SELECT
                         status,
-                        COUNT(*)::INTEGER AS count
+                        COUNT(*)::INTEGER
+                            AS count
 
                     FROM tasks
 
@@ -566,7 +598,7 @@ app.get(
                 "dashboard/index",
                 {
 
-                    user,
+                    user: user,
 
                     invitations:
                         invitationResult.rows,
@@ -677,6 +709,7 @@ app.get(
                 await pool.query(
                     `
                     SELECT
+
                         current_database()
                             AS database,
 
@@ -708,7 +741,7 @@ app.get(
 // ============================================
 // API 404 HANDLER
 // IMPORTANT:
-// Must come after all API routes
+// Comes after all API routes
 // ============================================
 
 app.use(

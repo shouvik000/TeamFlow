@@ -23,7 +23,9 @@
     "helmet": "^8.3.0",
     "multer": "^2.3.0",
     "pg": "^8.23.0",
-    "razorpay": "^2.9.8"
+    "razorpay": "^2.9.8",
+    "swagger-jsdoc": "^6.3.0",
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"

@@ -1,3 +1,61 @@
+/**
+ * @openapi
+ * /api/projects:
+ *   get:
+ *     tags:
+ *       - Projects
+ *     summary: Get all projects
+ *     description: Returns all projects in the current organization.
+ *     security:
+ *       - sessionAuth: []
+ *     responses:
+ *       200:
+ *         description: Projects retrieved successfully
+ *       401:
+ *         description: Authentication required
+ *       500:
+ *         description: Server error
+ */
+
+
+/**
+ * @openapi
+ * /api/projects:
+ *   post:
+ *     tags:
+ *       - Projects
+ *     summary: Create a project
+ *     security:
+ *       - sessionAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: Mobile App
+ *               description:
+ *                 type: string
+ *                 example: TeamFlow mobile application
+ *     responses:
+ *       201:
+ *         description: Project created successfully
+ *       400:
+ *         description: Invalid request
+ *       403:
+ *         description: Permission denied
+ *       500:
+ *         description: Server error
+ */
+
+
+
+
 const express = require("express");
 
 const router = express.Router();
