@@ -1,7 +1,12 @@
 const express = require("express");
+
 const path = require("path");
-const session = require("express-session");
-const pgSession = require("connect-pg-simple")(session);
+
+const session =
+    require("express-session");
+
+const pgSession =
+    require("connect-pg-simple")(session);
 
 require("dotenv").config();
 
@@ -10,11 +15,12 @@ require("dotenv").config();
 // DATABASE
 // ============================================
 
-const pool = require("./config/db");
+const pool =
+    require("./config/db");
 
 
 // ============================================
-// WEB CONTROLLER
+// WEBHOOK
 // ============================================
 
 const webhookController =
@@ -86,15 +92,51 @@ const {
 
 
 // ============================================
-// CREATE EXPRESS APP
-// IMPORTANT:
-// app MUST be created before app.use()
+// SECURITY
 // ============================================
 
-const app = express();
+const {
+    securityHeaders,
+    apiRateLimiter,
+    authRateLimiter
+} = require("./middleware/securityMiddleware");
+
+
+// ============================================
+// EXPRESS APP
+// ============================================
+
+const app =
+    express();
 
 const PORT =
     process.env.PORT || 3000;
+
+
+// ============================================
+// TRUST PROXY IN PRODUCTION
+// Useful when deployed behind Render/proxy
+// ============================================
+
+if (
+    process.env.NODE_ENV === "production"
+) {
+
+    app.set(
+        "trust proxy",
+        1
+    );
+
+}
+
+
+// ============================================
+// DISABLE X-POWERED-BY
+// ============================================
+
+app.disable(
+    "x-powered-by"
+);
 
 
 // ============================================
@@ -112,6 +154,15 @@ app.set(
         __dirname,
         "views"
     )
+);
+
+
+// ============================================
+// SECURITY HEADERS
+// ============================================
+
+app.use(
+    securityHeaders
 );
 
 
@@ -179,8 +230,6 @@ app.use(
 
 // ============================================
 // SESSION
-// IMPORTANT:
-// Must come BEFORE protected routes
 // ============================================
 
 app.use(
@@ -189,9 +238,11 @@ app.use(
         store:
             new pgSession({
 
-                pool: pool,
+                pool:
+                    pool,
 
-                tableName: "session"
+                tableName:
+                    "session"
 
             }),
 
@@ -220,7 +271,6 @@ app.use(
 
 // ============================================
 // GLOBAL USER
-// Makes logged-in user available in EJS
 // ============================================
 
 app.use(
@@ -236,63 +286,39 @@ app.use(
 
 
 // ============================================
-// WEB ROUTES
+// AUTH ROUTES
 // ============================================
-
-
-// --------------------------------------------
-// Authentication
-// --------------------------------------------
 
 app.use(
     "/auth",
+    authRateLimiter,
     authRoutes
 );
 
 
-// --------------------------------------------
-// Projects
-// --------------------------------------------
+// ============================================
+// WEB ROUTES
+// ============================================
 
 app.use(
     "/projects",
     projectRoutes
 );
 
-
-// --------------------------------------------
-// Organizations
-// --------------------------------------------
-
 app.use(
     "/organizations",
     organizationRoutes
 );
-
-
-// --------------------------------------------
-// Billing
-// --------------------------------------------
 
 app.use(
     "/billing",
     subscriptionRoutes
 );
 
-
-// --------------------------------------------
-// Tasks
-// --------------------------------------------
-
 app.use(
     "/",
     taskRoutes
 );
-
-
-// --------------------------------------------
-// Notifications
-// --------------------------------------------
 
 app.use(
     "/notifications",
@@ -301,12 +327,18 @@ app.use(
 
 
 // ============================================
-// REST API ROUTES
+// LEGACY REST API
+// Existing endpoints remain working
 // ============================================
+
+app.use(
+    "/api",
+    apiRateLimiter
+);
 
 
 // --------------------------------------------
-// Project API
+// Projects
 // /api/projects
 // --------------------------------------------
 
@@ -317,8 +349,7 @@ app.use(
 
 
 // --------------------------------------------
-// Task API
-//
+// Tasks
 // /api/projects/:projectId/tasks
 // /api/tasks/:taskId
 // --------------------------------------------
@@ -330,8 +361,7 @@ app.use(
 
 
 // --------------------------------------------
-// Organization API
-// /api/organizations
+// Organizations
 // --------------------------------------------
 
 app.use(
@@ -341,8 +371,7 @@ app.use(
 
 
 // --------------------------------------------
-// Notification API
-// /api/notifications
+// Notifications
 // --------------------------------------------
 
 app.use(
@@ -352,12 +381,75 @@ app.use(
 
 
 // --------------------------------------------
-// Billing API
-// /api/billing
+// Billing
 // --------------------------------------------
 
 app.use(
     "/api/billing",
+    subscriptionApiRoutes
+);
+
+
+// ============================================
+// VERSIONED REST API
+// Recommended endpoints
+// ============================================
+
+app.use(
+    "/api/v1",
+    apiRateLimiter
+);
+
+
+// --------------------------------------------
+// Projects v1
+// /api/v1/projects
+// --------------------------------------------
+
+app.use(
+    "/api/v1/projects",
+    projectApiRoutes
+);
+
+
+// --------------------------------------------
+// Tasks v1
+// /api/v1/projects/:projectId/tasks
+// /api/v1/tasks/:taskId
+// --------------------------------------------
+
+app.use(
+    "/api/v1",
+    taskApiRoutes
+);
+
+
+// --------------------------------------------
+// Organizations v1
+// --------------------------------------------
+
+app.use(
+    "/api/v1/organizations",
+    organizationApiRoutes
+);
+
+
+// --------------------------------------------
+// Notifications v1
+// --------------------------------------------
+
+app.use(
+    "/api/v1/notifications",
+    notificationApiRoutes
+);
+
+
+// --------------------------------------------
+// Billing v1
+// --------------------------------------------
+
+app.use(
+    "/api/v1/billing",
     subscriptionApiRoutes
 );
 
@@ -381,7 +473,6 @@ app.get(
 
         }
 
-
         res.redirect(
             "/auth/login"
         );
@@ -399,10 +490,6 @@ app.get(
 
     async (req, res) => {
 
-        // ========================================
-        // Authentication check
-        // ========================================
-
         if (
             !req.session ||
             !req.session.user
@@ -419,7 +506,6 @@ app.get(
 
             const user =
                 req.session.user;
-
 
             const organizationId =
                 user.organizationId;
@@ -483,7 +569,7 @@ app.get(
 
 
             // ========================================
-            // Total Task Count
+            // Task Count
             // ========================================
 
             const taskResult =
@@ -504,7 +590,7 @@ app.get(
 
 
             // ========================================
-            // Completed Task Count
+            // Completed Tasks
             // ========================================
 
             const completedResult =
@@ -527,7 +613,7 @@ app.get(
 
 
             // ========================================
-            // Team Member Count
+            // Members
             // ========================================
 
             const memberResult =
@@ -598,7 +684,7 @@ app.get(
                 "dashboard/index",
                 {
 
-                    user: user,
+                    user,
 
                     invitations:
                         invitationResult.rows,
@@ -709,7 +795,6 @@ app.get(
                 await pool.query(
                     `
                     SELECT
-
                         current_database()
                             AS database,
 
@@ -739,9 +824,7 @@ app.get(
 
 
 // ============================================
-// API 404 HANDLER
-// IMPORTANT:
-// Comes after all API routes
+// API 404
 // ============================================
 
 app.use(
@@ -750,7 +833,7 @@ app.use(
 
 
 // ============================================
-// NORMAL 404 HANDLER
+// NORMAL 404
 // ============================================
 
 app.use(
@@ -765,9 +848,7 @@ app.use(
 
 
 // ============================================
-// GLOBAL ERROR HANDLER
-// IMPORTANT:
-// Must be the final middleware
+// GLOBAL API ERROR HANDLER
 // ============================================
 
 app.use(
@@ -786,6 +867,14 @@ app.listen(
 
         console.log(
             `TeamFlow running at http://localhost:${PORT}`
+        );
+
+        console.log(
+            `Swagger docs: http://localhost:${PORT}/api-docs`
+        );
+
+        console.log(
+            `API v1: http://localhost:${PORT}/api/v1`
         );
 
     }
