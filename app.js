@@ -59,6 +59,10 @@ const notificationRoutes =
     require("./routes/api/notificationRoutes");
 
 
+  const subscriptionApiRoutes =
+    require("./routes/api/subscriptionRoutes");  
+
+
 const app =
     express();
 
@@ -254,7 +258,14 @@ app.use(
 
 
 
+// ============================================
+// BILLING REST API
+// ============================================
 
+app.use(
+    "/api/billing",
+    subscriptionApiRoutes
+);
 
 
 // ============================================
