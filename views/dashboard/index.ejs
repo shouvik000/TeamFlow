@@ -10,9 +10,13 @@
         content="width=device-width, initial-scale=1.0"
     >
 
-    <title>Dashboard | TeamFlow</title>
+    <title>
+        Dashboard | TeamFlow
+    </title>
 
-    
+
+   
+
     <link
         href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
         rel="stylesheet"
@@ -23,6 +27,7 @@
 
 <body class="bg-light">
 
+
     <!-- ============================================
          NAVBAR
     ============================================= -->
@@ -31,15 +36,19 @@
 
         <div class="container">
 
+
             <a
                 class="navbar-brand fw-bold"
                 href="/dashboard"
             >
+
                 TeamFlow 🚀
+
             </a>
 
 
             <div class="d-flex align-items-center gap-3">
+
 
                 <span class="text-white">
 
@@ -48,14 +57,16 @@
                 </span>
 
 
+                <!-- Notifications -->
+
                 <a
                     href="/notifications"
                     class="btn btn-outline-light btn-sm position-relative"
                 >
 
                     🔔
-
                     Notifications
+
 
                     <span
                         id="notificationBadge"
@@ -68,6 +79,8 @@
                 </a>
 
 
+                <!-- Logout -->
+
                 <form
                     action="/auth/logout"
                     method="POST"
@@ -78,7 +91,9 @@
                         type="submit"
                         class="btn btn-danger btn-sm"
                     >
+
                         Logout
+
                     </button>
 
                 </form>
@@ -90,6 +105,7 @@
     </nav>
 
 
+
     <!-- ============================================
          MAIN CONTENT
     ============================================= -->
@@ -98,7 +114,7 @@
 
 
         <!-- ========================================
-             WELCOME SECTION
+             WELCOME
         ========================================= -->
 
         <div class="mb-4">
@@ -106,6 +122,7 @@
             <h1 class="fw-bold">
                 Dashboard
             </h1>
+
 
             <p class="text-muted mb-0">
 
@@ -120,6 +137,7 @@
         </div>
 
 
+
         <!-- ========================================
              ORGANIZATION INFO
         ========================================= -->
@@ -130,6 +148,7 @@
 
                 <div class="row">
 
+
                     <div class="col-md-4 mb-3 mb-md-0">
 
                         <small class="text-muted">
@@ -137,7 +156,9 @@
                         </small>
 
                         <div class="fw-semibold">
+
                             <%= user.email %>
+
                         </div>
 
                     </div>
@@ -150,7 +171,9 @@
                         </small>
 
                         <div class="fw-semibold">
+
                             <%= user.organizationName %>
+
                         </div>
 
                     </div>
@@ -181,14 +204,13 @@
         </div>
 
 
+
         <!-- ========================================
              STATISTICS
         ========================================= -->
 
         <div class="row g-4 mb-5">
 
-
-            <!-- Projects -->
 
             <div class="col-md-6 col-xl-3">
 
@@ -213,8 +235,6 @@
             </div>
 
 
-            <!-- Tasks -->
-
             <div class="col-md-6 col-xl-3">
 
                 <div class="card border-0 shadow-sm h-100">
@@ -238,8 +258,6 @@
             </div>
 
 
-            <!-- Completed -->
-
             <div class="col-md-6 col-xl-3">
 
                 <div class="card border-0 shadow-sm h-100">
@@ -262,8 +280,6 @@
 
             </div>
 
-
-            <!-- Members -->
 
             <div class="col-md-6 col-xl-3">
 
@@ -290,6 +306,7 @@
         </div>
 
 
+
         <!-- ========================================
              TASK OVERVIEW
         ========================================= -->
@@ -298,17 +315,21 @@
 
             <div class="card-body">
 
+
                 <div class="d-flex justify-content-between align-items-center mb-4">
 
                     <h4 class="fw-bold mb-0">
                         Task Overview
                     </h4>
 
+
                     <a
                         href="/projects"
                         class="btn btn-primary btn-sm"
                     >
+
                         View Projects
+
                     </a>
 
                 </div>
@@ -322,7 +343,10 @@
 
                     <div class="row g-3">
 
-                        <% taskStatuses.forEach(function(item) { %>
+                        <% taskStatuses.forEach(
+                            function(item)
+                        { %>
+
 
                             <div class="col-md-6 col-lg-3">
 
@@ -334,6 +358,7 @@
 
                                     </div>
 
+
                                     <div class="fs-3 fw-bold">
 
                                         <%= item.count %>
@@ -344,12 +369,14 @@
 
                             </div>
 
+
                         <% }); %>
 
                     </div>
 
 
                 <% } else { %>
+
 
                     <div class="text-center py-4">
 
@@ -361,11 +388,13 @@
 
                     </div>
 
+
                 <% } %>
 
             </div>
 
         </div>
+
 
 
         <!-- ========================================
@@ -375,6 +404,7 @@
         <div class="card border-0 shadow-sm mb-5">
 
             <div class="card-body">
+
 
                 <h4 class="fw-bold mb-4">
                     Pending Invitations
@@ -387,13 +417,19 @@
                 ) { %>
 
 
-                    <% invitations.forEach(function(invitation) { %>
+                    <% invitations.forEach(
+                        function(invitation)
+                    { %>
+
 
                         <div class="border rounded p-3 mb-3">
 
+
                             <div class="row align-items-center">
 
+
                                 <div class="col-md-8">
+
 
                                     <h5 class="mb-2">
 
@@ -418,11 +454,14 @@
 
                                         <%= invitation.email %>
 
+
                                         <br>
+
 
                                         <strong>
                                             Role:
                                         </strong>
+
 
                                         <span class="badge bg-secondary">
 
@@ -430,11 +469,14 @@
 
                                         </span>
 
+
                                         <br>
+
 
                                         <strong>
                                             Expires:
                                         </strong>
+
 
                                         <%= new Date(
                                             invitation.expires_at
@@ -447,10 +489,12 @@
 
                                 <div class="col-md-4 text-md-end mt-3 mt-md-0">
 
+
                                     <form
                                         action="/organizations/invite/accept"
                                         method="POST"
                                     >
+
 
                                         <input
                                             type="hidden"
@@ -458,14 +502,19 @@
                                             value="<%= invitation.id %>"
                                         >
 
+
                                         <button
                                             type="submit"
                                             class="btn btn-success"
                                         >
+
                                             Accept Invitation
+
                                         </button>
 
+
                                     </form>
+
 
                                 </div>
 
@@ -473,22 +522,27 @@
 
                         </div>
 
+
                     <% }); %>
 
 
                 <% } else { %>
 
+
                     <p class="text-muted mb-0">
 
-                        You don't have any pending invitations.
+                        You don't have any
+                        pending invitations.
 
                     </p>
+
 
                 <% } %>
 
             </div>
 
         </div>
+
 
 
         <!-- ========================================
@@ -499,15 +553,16 @@
 
             <div class="card-body">
 
+
                 <h4 class="fw-bold mb-4">
+
                     Quick Actions
+
                 </h4>
 
 
                 <div class="row g-3">
 
-
-                    <!-- Projects -->
 
                     <div class="col-md-6 col-lg-3">
 
@@ -516,21 +571,18 @@
                             class="btn btn-outline-primary w-100"
                         >
 
-                            📁
-
-                            Projects
+                            📁 Projects
 
                         </a>
 
                     </div>
 
 
-                    <!-- Team -->
-
                     <% if (
                         user.role === "OWNER" ||
                         user.role === "ADMIN"
                     ) { %>
+
 
                         <div class="col-md-6 col-lg-3">
 
@@ -539,18 +591,15 @@
                                 class="btn btn-outline-primary w-100"
                             >
 
-                                👥
-
-                                Team Members
+                                👥 Team Members
 
                             </a>
 
                         </div>
 
+
                     <% } %>
 
-
-                    <!-- Activity -->
 
                     <div class="col-md-6 col-lg-3">
 
@@ -559,16 +608,12 @@
                             class="btn btn-outline-primary w-100"
                         >
 
-                            📋
-
-                            Activity Log
+                            📋 Activity Log
 
                         </a>
 
                     </div>
 
-
-                    <!-- Billing -->
 
                     <div class="col-md-6 col-lg-3">
 
@@ -577,16 +622,12 @@
                             class="btn btn-outline-primary w-100"
                         >
 
-                            💳
-
-                            Subscription
+                            💳 Subscription
 
                         </a>
 
                     </div>
 
-
-                    <!-- Organization -->
 
                     <div class="col-md-6 col-lg-3">
 
@@ -595,16 +636,12 @@
                             class="btn btn-outline-secondary w-100"
                         >
 
-                            🔄
-
-                            Switch Organization
+                            🔄 Switch Organization
 
                         </a>
 
                     </div>
 
-
-                    <!-- Notifications -->
 
                     <div class="col-md-6 col-lg-3">
 
@@ -613,9 +650,7 @@
                             class="btn btn-outline-secondary w-100"
                         >
 
-                            🔔
-
-                            Notifications
+                            🔔 Notifications
 
                         </a>
 
@@ -630,9 +665,10 @@
     </main>
 
 
-    <!-- ============================================
+
+    <!-- ========================================
          FOOTER
-    ============================================= -->
+    ========================================= -->
 
     <footer class="border-top bg-white py-3">
 
@@ -649,74 +685,32 @@
     </footer>
 
 
-    <!-- ============================================
+
+    <!-- ========================================
          BOOTSTRAP JS
-    ============================================= -->
+    ========================================= -->
 
     <script
         src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
     ></script>
 
 
-    <!-- ============================================
-         NOTIFICATION COUNT
-    ============================================= -->
+    <!-- ========================================
+         SOCKET.IO CLIENT
+    ========================================= -->
 
-    <script>
-
-        async function loadUnreadNotifications() {
-
-            try {
-
-                const response =
-                    await fetch(
-                        "/notifications/unread-count"
-                    );
+    <script
+        src="/socket.io/socket.io.js"
+    ></script>
 
 
-                const data =
-                    await response.json();
+    <!-- ========================================
+         TEAMFLOW NOTIFICATIONS
+    ========================================= -->
 
-
-                const badge =
-                    document.getElementById(
-                        "notificationBadge"
-                    );
-
-
-                if (
-                    data.success &&
-                    data.count > 0
-                ) {
-
-                    badge.textContent =
-                        data.count;
-
-                    badge.style.display =
-                        "inline-block";
-
-                } else {
-
-                    badge.style.display =
-                        "none";
-
-                }
-
-            } catch (error) {
-
-                console.error(
-                    "Failed to load notification count:",
-                    error
-                );
-
-            }
-
-        }
-
-
-        loadUnreadNotifications();
-
-    </script>
+    <script
+        src="/js/notifications.js"
+    ></script>
 
 
 </body>

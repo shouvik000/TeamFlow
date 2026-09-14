@@ -1,12 +1,11 @@
 const express = require("express");
-
 const path = require("path");
+const http = require("http");
 
-const session =
-    require("express-session");
+const session = require("express-session");
+const pgSession = require("connect-pg-simple")(session);
 
-const pgSession =
-    require("connect-pg-simple")(session);
+const { Server } = require("socket.io");
 
 require("dotenv").config();
 
@@ -15,8 +14,7 @@ require("dotenv").config();
 // DATABASE
 // ============================================
 
-const pool =
-    require("./config/db");
+const pool = require("./config/db");
 
 
 // ============================================
@@ -68,9 +66,10 @@ const notificationApiRoutes =
 
 const subscriptionApiRoutes =
     require("./routes/api/subscriptionRoutes");
-   
-    const activityApiRoutes =
+
+const activityApiRoutes =
     require("./routes/api/activityRoutes");
+
 
 // ============================================
 // SWAGGER
@@ -105,11 +104,20 @@ const {
 
 
 // ============================================
+// SOCKET.IO SERVICE
+// ============================================
+
+const {
+    setIO,
+    getUserRoom
+} = require("./services/socketService");
+
+
+// ============================================
 // EXPRESS APP
 // ============================================
 
-const app =
-    express();
+const app = express();
 
 const PORT =
     process.env.PORT || 3000;
@@ -123,12 +131,10 @@ const PORT =
 if (
     process.env.NODE_ENV === "production"
 ) {
-
     app.set(
         "trust proxy",
         1
     );
-
 }
 
 
@@ -186,8 +192,10 @@ app.use(
 
 // ============================================
 // RAZORPAY WEBHOOK
+//
 // IMPORTANT:
-// Must come before express.json()
+// Webhook must receive raw JSON body
+// BEFORE express.json()
 // ============================================
 
 app.post(
@@ -231,10 +239,14 @@ app.use(
 
 
 // ============================================
-// SESSION
+// SESSION MIDDLEWARE
+//
+// IMPORTANT:
+// Keep this in a variable because
+// Socket.IO will reuse the same session.
 // ============================================
 
-app.use(
+const sessionMiddleware =
     session({
 
         store:
@@ -244,7 +256,10 @@ app.use(
                     pool,
 
                 tableName:
-                    "session"
+                    "session",
+
+                createTableIfMissing:
+                    false
 
             }),
 
@@ -267,7 +282,15 @@ app.use(
 
         }
 
-    })
+    });
+
+
+// ============================================
+// APPLY SESSION TO EXPRESS
+// ============================================
+
+app.use(
+    sessionMiddleware
 );
 
 
@@ -279,7 +302,10 @@ app.use(
     (req, res, next) => {
 
         res.locals.user =
-            req.session.user || null;
+            req.session &&
+            req.session.user
+                ? req.session.user
+                : null;
 
         next();
 
@@ -364,6 +390,7 @@ app.use(
 
 // --------------------------------------------
 // Organizations
+// /api/organizations
 // --------------------------------------------
 
 app.use(
@@ -374,6 +401,7 @@ app.use(
 
 // --------------------------------------------
 // Notifications
+// /api/notifications
 // --------------------------------------------
 
 app.use(
@@ -384,6 +412,7 @@ app.use(
 
 // --------------------------------------------
 // Billing
+// /api/billing
 // --------------------------------------------
 
 app.use(
@@ -428,6 +457,7 @@ app.use(
 
 // --------------------------------------------
 // Organizations v1
+// /api/v1/organizations
 // --------------------------------------------
 
 app.use(
@@ -438,6 +468,7 @@ app.use(
 
 // --------------------------------------------
 // Notifications v1
+// /api/v1/notifications
 // --------------------------------------------
 
 app.use(
@@ -448,6 +479,7 @@ app.use(
 
 // --------------------------------------------
 // Billing v1
+// /api/v1/billing
 // --------------------------------------------
 
 app.use(
@@ -456,16 +488,16 @@ app.use(
 );
 
 
-
-// ============================================
+// --------------------------------------------
 // Activity API v1
 // /api/v1/activity
-// ============================================
+// --------------------------------------------
 
 app.use(
     "/api/v1/activity",
     activityApiRoutes
 );
+
 
 // ============================================
 // HOME ROUTE
@@ -473,6 +505,7 @@ app.use(
 
 app.get(
     "/",
+
     (req, res) => {
 
         if (
@@ -541,8 +574,7 @@ app.get(
                     FROM invitations i
 
                     JOIN organizations o
-                        ON o.id =
-                           i.organization_id
+                        ON o.id = i.organization_id
 
                     WHERE LOWER(i.email)
                           = LOWER($1)
@@ -568,8 +600,7 @@ app.get(
                 await pool.query(
                     `
                     SELECT
-                        COUNT(*)::INTEGER
-                            AS count
+                        COUNT(*)::INTEGER AS count
 
                     FROM projects
 
@@ -589,8 +620,7 @@ app.get(
                 await pool.query(
                     `
                     SELECT
-                        COUNT(*)::INTEGER
-                            AS count
+                        COUNT(*)::INTEGER AS count
 
                     FROM tasks
 
@@ -610,8 +640,7 @@ app.get(
                 await pool.query(
                     `
                     SELECT
-                        COUNT(*)::INTEGER
-                            AS count
+                        COUNT(*)::INTEGER AS count
 
                     FROM tasks
 
@@ -633,8 +662,7 @@ app.get(
                 await pool.query(
                     `
                     SELECT
-                        COUNT(*)::INTEGER
-                            AS count
+                        COUNT(*)::INTEGER AS count
 
                     FROM organization_members
 
@@ -655,8 +683,7 @@ app.get(
                     `
                     SELECT
                         status,
-                        COUNT(*)::INTEGER
-                            AS count
+                        COUNT(*)::INTEGER AS count
 
                     FROM tasks
 
@@ -808,6 +835,7 @@ app.get(
                 await pool.query(
                     `
                     SELECT
+
                         current_database()
                             AS database,
 
@@ -823,6 +851,11 @@ app.get(
 
         } catch (error) {
 
+            console.error(
+                "Database info error:",
+                error
+            );
+
             res.status(500).json({
 
                 error:
@@ -837,7 +870,7 @@ app.get(
 
 
 // ============================================
-// API 404
+// API 404 HANDLER
 // ============================================
 
 app.use(
@@ -846,7 +879,7 @@ app.use(
 
 
 // ============================================
-// NORMAL 404
+// NORMAL 404 HANDLER
 // ============================================
 
 app.use(
@@ -870,10 +903,185 @@ app.use(
 
 
 // ============================================
+// CREATE HTTP SERVER
+//
+// IMPORTANT:
+// DO NOT use app.listen()
+// because Socket.IO needs the HTTP server.
+// ============================================
+
+const server =
+    http.createServer(app);
+
+
+// ============================================
+// CREATE SOCKET.IO SERVER
+// ============================================
+
+const io =
+    new Server(
+        server,
+        {
+            cors: {
+                origin: true,
+                credentials: true
+            }
+        }
+    );
+
+
+// ============================================
+// SHARE EXPRESS SESSION WITH SOCKET.IO
+// ============================================
+
+io.engine.use(
+    sessionMiddleware
+);
+
+
+// ============================================
+// SOCKET.IO AUTHENTICATION
+// ============================================
+
+io.use(
+    (socket, next) => {
+
+        try {
+
+            const currentSession =
+                socket.request.session;
+
+
+            // ------------------------------------
+            // User must be logged in
+            // ------------------------------------
+
+            if (
+                !currentSession ||
+                !currentSession.user
+            ) {
+
+                return next(
+                    new Error(
+                        "Authentication required"
+                    )
+                );
+
+            }
+
+
+            // ------------------------------------
+            // Save user information
+            // ------------------------------------
+
+            socket.user =
+                currentSession.user;
+
+
+            next();
+
+        } catch (error) {
+
+            console.error(
+                "Socket authentication error:",
+                error
+            );
+
+            next(
+                new Error(
+                    "Socket authentication failed"
+                )
+            );
+
+        }
+
+    }
+);
+
+
+// ============================================
+// SOCKET.IO CONNECTION
+// ============================================
+
+io.on(
+    "connection",
+
+    (socket) => {
+
+        const user =
+            socket.user;
+
+
+        // ========================================
+        // USER + ORGANIZATION ROOM
+        // ========================================
+
+        const room =
+            getUserRoom(
+                user.id,
+                user.organizationId
+            );
+
+
+        // ========================================
+        // JOIN ROOM
+        // ========================================
+
+        socket.join(
+            room
+        );
+
+
+        // ========================================
+        // LOG CONNECTION
+        // ========================================
+
+        console.log(
+            `🔌 Socket connected: user=${user.id} org=${user.organizationId}`
+        );
+
+        console.log(
+            `📡 Joined room: ${room}`
+        );
+
+
+        // ========================================
+        // DISCONNECT
+        // ========================================
+
+        socket.on(
+            "disconnect",
+
+            (reason) => {
+
+                console.log(
+                    `🔌 Socket disconnected: user=${user.id} reason=${reason}`
+                );
+
+            }
+        );
+
+    }
+);
+
+
+// ============================================
+// CONNECT SOCKET.IO SERVICE
+//
+// notificationService.js uses this to send
+// real-time notifications.
+// ============================================
+
+setIO(
+    io
+);
+
+
+// ============================================
 // START SERVER
 // ============================================
 
-app.listen(
+server.listen(
     PORT,
 
     () => {
@@ -883,11 +1091,15 @@ app.listen(
         );
 
         console.log(
-            `Swagger docs: http://localhost:${PORT}/api-docs`
+            ` Swagger docs: http://localhost:${PORT}/api-docs`
         );
 
         console.log(
-            `API v1: http://localhost:${PORT}/api/v1`
+            ` API v1: http://localhost:${PORT}/api/v1`
+        );
+
+        console.log(
+            `Socket.IO real-time notifications enabled`
         );
 
     }
