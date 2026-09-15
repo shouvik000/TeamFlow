@@ -1,3 +1,5 @@
+
+
 const express = require("express");
 const path = require("path");
 const http = require("http");
@@ -109,7 +111,8 @@ const {
 
 const {
     setIO,
-    getUserRoom
+    getUserRoom,
+    getOrganizationRoom
 } = require("./services/socketService");
 
 
@@ -117,7 +120,8 @@ const {
 // EXPRESS APP
 // ============================================
 
-const app = express();
+const app =
+    express();
 
 const PORT =
     process.env.PORT || 3000;
@@ -131,10 +135,12 @@ const PORT =
 if (
     process.env.NODE_ENV === "production"
 ) {
+
     app.set(
         "trust proxy",
         1
     );
+
 }
 
 
@@ -769,6 +775,227 @@ app.get(
 
 
 // ============================================
+// DASHBOARD REAL-TIME STATS
+//
+// Used by:
+// views/dashboard/index.ejs
+//
+// Endpoint:
+// GET /dashboard/stats
+// ============================================
+
+app.get(
+    "/dashboard/stats",
+
+    async (req, res) => {
+
+        // ========================================
+        // Authentication check
+        // ========================================
+
+        if (
+            !req.session ||
+            !req.session.user
+        ) {
+
+            return res.status(401).json({
+
+                success:
+                    false,
+
+                message:
+                    "Authentication required"
+
+            });
+
+        }
+
+
+        try {
+
+            const organizationId =
+                req.session.user.organizationId;
+
+
+            // ========================================
+            // Project Count
+            // ========================================
+
+            const projectResult =
+                await pool.query(
+                    `
+                    SELECT
+                        COUNT(*)::INTEGER AS count
+
+                    FROM projects
+
+                    WHERE organization_id = $1
+                    `,
+                    [
+                        organizationId
+                    ]
+                );
+
+
+            // ========================================
+            // Task Count
+            // ========================================
+
+            const taskResult =
+                await pool.query(
+                    `
+                    SELECT
+                        COUNT(*)::INTEGER AS count
+
+                    FROM tasks
+
+                    WHERE organization_id = $1
+                    `,
+                    [
+                        organizationId
+                    ]
+                );
+
+
+            // ========================================
+            // Completed Task Count
+            // ========================================
+
+            const completedResult =
+                await pool.query(
+                    `
+                    SELECT
+                        COUNT(*)::INTEGER AS count
+
+                    FROM tasks
+
+                    WHERE organization_id = $1
+
+                      AND status = 'DONE'
+                    `,
+                    [
+                        organizationId
+                    ]
+                );
+
+
+            // ========================================
+            // Member Count
+            // ========================================
+
+            const memberResult =
+                await pool.query(
+                    `
+                    SELECT
+                        COUNT(*)::INTEGER AS count
+
+                    FROM organization_members
+
+                    WHERE organization_id = $1
+                    `,
+                    [
+                        organizationId
+                    ]
+                );
+
+
+            // ========================================
+            // Task Status Statistics
+            // ========================================
+
+            const statusResult =
+                await pool.query(
+                    `
+                    SELECT
+                        status,
+                        COUNT(*)::INTEGER AS count
+
+                    FROM tasks
+
+                    WHERE organization_id = $1
+
+                    GROUP BY status
+
+                    ORDER BY
+                        CASE status
+
+                            WHEN 'TODO'
+                                THEN 1
+
+                            WHEN 'IN_PROGRESS'
+                                THEN 2
+
+                            WHEN 'REVIEW'
+                                THEN 3
+
+                            WHEN 'DONE'
+                                THEN 4
+
+                            ELSE 5
+
+                        END
+                    `,
+                    [
+                        organizationId
+                    ]
+                );
+
+
+            // ========================================
+            // Send JSON response
+            // ========================================
+
+            res.json({
+
+                success:
+                    true,
+
+                stats: {
+
+                    projectCount:
+                        projectResult.rows[0].count,
+
+                    taskCount:
+                        taskResult.rows[0].count,
+
+                    completedCount:
+                        completedResult.rows[0].count,
+
+                    memberCount:
+                        memberResult.rows[0].count,
+
+                    taskStatuses:
+                        statusResult.rows
+
+                }
+
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Dashboard stats error:",
+                error
+            );
+
+
+            res.status(500).json({
+
+                success:
+                    false,
+
+                message:
+                    "Failed to load dashboard statistics"
+
+            });
+
+        }
+
+    }
+);
+
+
+// ============================================
 // DATABASE TEST
 // ============================================
 
@@ -787,7 +1014,8 @@ app.get(
 
             res.json({
 
-                success: true,
+                success:
+                    true,
 
                 message:
                     "Database connected successfully",
@@ -807,7 +1035,8 @@ app.get(
 
             res.status(500).json({
 
-                success: false,
+                success:
+                    false,
 
                 message:
                     "Database connection failed"
@@ -855,6 +1084,7 @@ app.get(
                 "Database info error:",
                 error
             );
+
 
             res.status(500).json({
 
@@ -1016,7 +1246,7 @@ io.on(
         // USER + ORGANIZATION ROOM
         // ========================================
 
-        const room =
+        const userRoom =
             getUserRoom(
                 user.id,
                 user.organizationId
@@ -1024,11 +1254,32 @@ io.on(
 
 
         // ========================================
-        // JOIN ROOM
+        // ORGANIZATION ROOM
+        // ========================================
+
+        const organizationRoom =
+            getOrganizationRoom(
+                user.organizationId
+            );
+
+
+        // ========================================
+        // JOIN USER ROOM
+        // Used for personal notifications
         // ========================================
 
         socket.join(
-            room
+            userRoom
+        );
+
+
+        // ========================================
+        // JOIN ORGANIZATION ROOM
+        // Used for task/project real-time events
+        // ========================================
+
+        socket.join(
+            organizationRoom
         );
 
 
@@ -1040,8 +1291,123 @@ io.on(
             `🔌 Socket connected: user=${user.id} org=${user.organizationId}`
         );
 
+
         console.log(
-            `📡 Joined room: ${room}`
+            `📡 Joined user room: ${userRoom}`
+        );
+
+
+        console.log(
+            `📡 Joined organization room: ${organizationRoom}`
+        );
+
+
+        // ========================================
+        // ORGANIZATION SWITCH EVENT
+        // ========================================
+
+        socket.on(
+            "organization:switch",
+
+            async (organizationId) => {
+
+                try {
+
+                    const requestedOrganizationId =
+                        Number(
+                            organizationId
+                        );
+
+
+                    if (
+                        !Number.isInteger(
+                            requestedOrganizationId
+                        ) ||
+                        requestedOrganizationId <= 0
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    // --------------------------------
+                    // Verify membership
+                    // --------------------------------
+
+                    const membershipResult =
+                        await pool.query(
+                            `
+                            SELECT
+                                organization_id,
+                                role
+
+                            FROM organization_members
+
+                            WHERE organization_id = $1
+
+                              AND user_id = $2
+
+                            LIMIT 1
+                            `,
+                            [
+                                requestedOrganizationId,
+                                user.id
+                            ]
+                        );
+
+
+                    if (
+                        membershipResult.rows.length === 0
+                    ) {
+
+                        console.log(
+                            `⚠️ User ${user.id} attempted unauthorized organization switch to ${requestedOrganizationId}`
+                        );
+
+                        return;
+
+                    }
+
+
+                    // --------------------------------
+                    // Leave old organization room
+                    // --------------------------------
+
+                    socket.leave(
+                        organizationRoom
+                    );
+
+
+                    // --------------------------------
+                    // Join new organization room
+                    // --------------------------------
+
+                    const newOrganizationRoom =
+                        getOrganizationRoom(
+                            requestedOrganizationId
+                        );
+
+
+                    socket.join(
+                        newOrganizationRoom
+                    );
+
+
+                    console.log(
+                        `🔄 User ${user.id} switched socket organization room from ${organizationRoom} to ${newOrganizationRoom}`
+                    );
+
+                } catch (error) {
+
+                    console.error(
+                        "Socket organization switch error:",
+                        error
+                    );
+
+                }
+
+            }
         );
 
 
@@ -1068,8 +1434,8 @@ io.on(
 // ============================================
 // CONNECT SOCKET.IO SERVICE
 //
-// notificationService.js uses this to send
-// real-time notifications.
+// notificationService.js and task/project
+// events use this shared Socket.IO instance.
 // ============================================
 
 setIO(
@@ -1091,15 +1457,19 @@ server.listen(
         );
 
         console.log(
-            ` Swagger docs: http://localhost:${PORT}/api-docs`
+            `Swagger docs: http://localhost:${PORT}/api-docs`
         );
 
         console.log(
-            ` API v1: http://localhost:${PORT}/api/v1`
+            `API v1: http://localhost:${PORT}/api/v1`
         );
 
         console.log(
             `Socket.IO real-time notifications enabled`
+        );
+
+        console.log(
+            ` Real-time organization events enabled`
         );
 
     }

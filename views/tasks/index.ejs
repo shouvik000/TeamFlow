@@ -19,23 +19,69 @@
         href="/css/style.css"
     >
 
+    <style>
+
+        .task-card {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-top: 15px;
+            border-radius: 8px;
+            background: #ffffff;
+        }
+
+        .task-card h3 {
+            margin-bottom: 10px;
+        }
+
+        .task-meta {
+            margin-top: 8px;
+        }
+
+        .realtime-status {
+            margin-top: 10px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            background: #e8f5e9;
+            color: #2e7d32;
+            font-size: 14px;
+            display: none;
+        }
+
+        .empty-tasks {
+            margin-top: 15px;
+        }
+
+    </style>
+
 </head>
 
 
 <body>
 
+
     <div class="auth-container">
 
+
         <div class="auth-card">
+
+
+            <!-- ==========================================
+                 PROJECT NAME
+            =========================================== -->
 
             <h1>
                 <%= project.name %>
             </h1>
 
+
             <h2>
                 Tasks
             </h2>
 
+
+            <!-- ==========================================
+                 CREATE TASK
+            =========================================== -->
 
             <p>
 
@@ -48,135 +94,989 @@
             </p>
 
 
+            <!-- ==========================================
+                 REAL-TIME CONNECTION STATUS
+            =========================================== -->
+
+            <div
+                id="realtimeStatus"
+                class="realtime-status"
+            >
+                Real-time task updates enabled
+            </div>
+
+
             <hr>
 
 
-            <% if (tasks.length === 0) { %>
+            <!-- ==========================================
+                 TASK LIST
+            =========================================== -->
 
-                <p>
-                    No tasks created yet.
-                </p>
-
-            <% } %>
+            <div id="taskList">
 
 
-            <% tasks.forEach(task => { %>
+                <% if (tasks.length === 0) { %>
 
-                <div
-                    style="
-                        border: 1px solid #ddd;
-                        padding: 15px;
-                        margin-top: 15px;
-                        border-radius: 8px;
-                    "
-                >
-
-                    <h3>
-                        <%= task.title %>
-                    </h3>
-
-
-                    <p>
-                        <%= task.description || "No description" %>
+                    <p
+                        id="emptyTasksMessage"
+                        class="empty-tasks"
+                    >
+                        No tasks created yet.
                     </p>
 
-
-                    <p>
-                        Status:
-                        <strong>
-                            <%= task.status %>
-                        </strong>
-                    </p>
+                <% } %>
 
 
-                    <p>
-                        Priority:
-                        <strong>
-                            <%= task.priority %>
-                        </strong>
-                    </p>
+                <% tasks.forEach(task => { %>
 
 
-                    <p>
-
-                        Assigned to:
-
-                        <strong>
-
-                            <%= task.assignee_name
-                                || "Unassigned" %>
-
-                        </strong>
-
-                    </p>
+                    <div
+                        class="task-card"
+                        id="task-<%= task.id %>"
+                        data-task-id="<%= task.id %>"
+                        data-project-id="<%= task.project_id %>"
+                    >
 
 
-                    <p>
+                        <!-- ==================================
+                             TASK TITLE
+                        =================================== -->
 
-                        Due date:
-
-                        <strong>
-
-                            <%= task.due_date
-                                || "No due date" %>
-
-                        </strong>
-
-                    </p>
+                        <h3 class="task-title">
+                            <%= task.title %>
+                        </h3>
 
 
-                    <p>
+                        <!-- ==================================
+                             DESCRIPTION
+                        =================================== -->
 
-                        Created by:
+                        <p class="task-description">
 
-                        <%= task.creator_name %>
+                            <%= task.description
+                                || "No description" %>
 
-                    </p>
+                        </p>
 
 
-                    <p>
+                        <!-- ==================================
+                             STATUS
+                        =================================== -->
 
-    <a href="/tasks/<%= task.id %>/edit">
-        Edit Task
-    </a>
+                        <p class="task-meta">
 
-</p>
+                            Status:
 
-<% if (
-    user.role === "OWNER" ||
-    user.role === "ADMIN"
-) { %>
+                            <strong class="task-status">
 
-    <form
-        action="/tasks/<%= task.id %>/delete"
-        method="POST"
-        onsubmit="return confirm('Are you sure you want to delete this task?');"
-    >
+                                <%= task.status %>
 
-        <button type="submit">
-            Delete Task
-        </button>
+                            </strong>
 
-    </form>
+                        </p>
 
-   <% } %>
 
-                </div>
+                        <!-- ==================================
+                             PRIORITY
+                        =================================== -->
 
-            <% }); %>
+                        <p class="task-meta">
 
+                            Priority:
+
+                            <strong class="task-priority">
+
+                                <%= task.priority %>
+
+                            </strong>
+
+                        </p>
+
+
+                        <!-- ==================================
+                             ASSIGNEE
+                        =================================== -->
+
+                        <p class="task-meta">
+
+                            Assigned to:
+
+                            <strong class="task-assignee">
+
+                                <%= task.assignee_name
+                                    || "Unassigned" %>
+
+                            </strong>
+
+                        </p>
+
+
+                        <!-- ==================================
+                             DUE DATE
+                        =================================== -->
+
+                        <p class="task-meta">
+
+                            Due date:
+
+                            <strong class="task-due-date">
+
+                                <%= task.due_date
+                                    || "No due date" %>
+
+                            </strong>
+
+                        </p>
+
+
+                        <!-- ==================================
+                             CREATED BY
+                        =================================== -->
+
+                        <p class="task-meta">
+
+                            Created by:
+
+                            <span class="task-creator">
+
+                                <%= task.creator_name %>
+
+                            </span>
+
+                        </p>
+
+
+                        <!-- ==================================
+                             EDIT
+                        =================================== -->
+
+                        <p>
+
+                            <a
+                                href="/tasks/<%= task.id %>/edit"
+                            >
+                                Edit Task
+                            </a>
+
+                        </p>
+
+
+                        <!-- ==================================
+                             DELETE
+                        =================================== -->
+
+                        <% if (
+                            user.role === "OWNER" ||
+                            user.role === "ADMIN"
+                        ) { %>
+
+
+                            <form
+                                action="/tasks/<%= task.id %>/delete"
+                                method="POST"
+                                onsubmit="return confirm('Are you sure you want to delete this task?');"
+                            >
+
+                                <button
+                                    type="submit"
+                                >
+                                    Delete Task
+                                </button>
+
+                            </form>
+
+
+                        <% } %>
+
+
+                    </div>
+
+
+                <% }); %>
+
+
+            </div>
+
+
+            <!-- ==========================================
+                 BACK TO PROJECTS
+            =========================================== -->
 
             <p class="auth-footer">
 
                 <a href="/projects">
+
                     ← Back to Projects
+
                 </a>
 
             </p>
 
+
         </div>
 
     </div>
+
+
+
+    <!-- ==============================================
+         SOCKET.IO CLIENT
+    =============================================== -->
+
+    <script src="/socket.io/socket.io.js"></script>
+
+
+    <script>
+
+        // ============================================
+        // CURRENT PROJECT
+        // ============================================
+
+        const currentProjectId =
+            Number(
+                "<%= project.id %>"
+            );
+
+
+        // ============================================
+        // SOCKET.IO CONNECTION
+        // ============================================
+
+        const socket =
+            io();
+
+
+        // ============================================
+        // ELEMENTS
+        // ============================================
+
+        const taskList =
+            document.getElementById(
+                "taskList"
+            );
+
+
+        const realtimeStatus =
+            document.getElementById(
+                "realtimeStatus"
+            );
+
+
+        // ============================================
+        // SHOW REAL-TIME STATUS
+        // ============================================
+
+        function showRealtimeStatus(
+            message
+        ) {
+
+            if (!realtimeStatus) {
+
+                return;
+
+            }
+
+
+            realtimeStatus.textContent =
+                message;
+
+
+            realtimeStatus.style.display =
+                "block";
+
+
+            setTimeout(
+                () => {
+
+                    realtimeStatus.style.display =
+                        "none";
+
+                },
+                3000
+            );
+
+        }
+
+
+        // ============================================
+        // ESCAPE HTML
+        //
+        // Prevents user-entered task data from
+        // being inserted as raw HTML.
+        // ============================================
+
+        function escapeHtml(
+            value
+        ) {
+
+            if (
+                value === null ||
+                value === undefined
+            ) {
+
+                return "";
+
+            }
+
+
+            return String(value)
+                .replace(
+                    /&/g,
+                    "&amp;"
+                )
+                .replace(
+                    /</g,
+                    "&lt;"
+                )
+                .replace(
+                    />/g,
+                    "&gt;"
+                )
+                .replace(
+                    /"/g,
+                    "&quot;"
+                )
+                .replace(
+                    /'/g,
+                    "&#039;"
+                );
+
+        }
+
+
+        // ============================================
+        // CHECK PROJECT
+        // ============================================
+
+        function isCurrentProject(
+            task
+        ) {
+
+            return Number(
+                task.project_id
+            ) === currentProjectId;
+
+        }
+
+
+        // ============================================
+        // CREATE TASK CARD
+        // ============================================
+
+        function createTaskCard(
+            task
+        ) {
+
+            const card =
+                document.createElement(
+                    "div"
+                );
+
+
+            card.className =
+                "task-card";
+
+
+            card.id =
+                `task-${task.id}`;
+
+
+            card.dataset.taskId =
+                task.id;
+
+
+            card.dataset.projectId =
+                task.project_id;
+
+
+            const assignee =
+                task.assignee_name ||
+                "Unassigned";
+
+
+            const dueDate =
+                task.due_date ||
+                "No due date";
+
+
+            const creator =
+                task.creator_name ||
+                "Unknown";
+
+
+            card.innerHTML = `
+
+                <h3 class="task-title">
+                    ${escapeHtml(task.title)}
+                </h3>
+
+                <p class="task-description">
+                    ${escapeHtml(
+                        task.description ||
+                        "No description"
+                    )}
+                </p>
+
+                <p class="task-meta">
+
+                    Status:
+
+                    <strong class="task-status">
+                        ${escapeHtml(
+                            task.status ||
+                            "TODO"
+                        )}
+                    </strong>
+
+                </p>
+
+                <p class="task-meta">
+
+                    Priority:
+
+                    <strong class="task-priority">
+                        ${escapeHtml(
+                            task.priority ||
+                            "MEDIUM"
+                        )}
+                    </strong>
+
+                </p>
+
+                <p class="task-meta">
+
+                    Assigned to:
+
+                    <strong class="task-assignee">
+                        ${escapeHtml(
+                            assignee
+                        )}
+                    </strong>
+
+                </p>
+
+                <p class="task-meta">
+
+                    Due date:
+
+                    <strong class="task-due-date">
+                        ${escapeHtml(
+                            dueDate
+                        )}
+                    </strong>
+
+                </p>
+
+                <p class="task-meta">
+
+                    Created by:
+
+                    <span class="task-creator">
+                        ${escapeHtml(
+                            creator
+                        )}
+                    </span>
+
+                </p>
+
+                <p>
+
+                    <a
+                        href="/tasks/${encodeURIComponent(task.id)}/edit"
+                    >
+                        Edit Task
+                    </a>
+
+                </p>
+
+                ${
+                    "<%= user.role === 'OWNER' || user.role === 'ADMIN' %>" ===
+                    "true"
+
+                    ?
+
+                    `
+                    <form
+                        action="/tasks/${encodeURIComponent(task.id)}/delete"
+                        method="POST"
+                        onsubmit="return confirm('Are you sure you want to delete this task?');"
+                    >
+
+                        <button type="submit">
+                            Delete Task
+                        </button>
+
+                    </form>
+                    `
+
+                    :
+
+                    ""
+                }
+
+            `;
+
+
+            return card;
+
+        }
+
+
+        // ============================================
+        // REMOVE EMPTY MESSAGE
+        // ============================================
+
+        function removeEmptyMessage() {
+
+            const emptyMessage =
+                document.getElementById(
+                    "emptyTasksMessage"
+                );
+
+
+            if (emptyMessage) {
+
+                emptyMessage.remove();
+
+            }
+
+        }
+
+
+        // ============================================
+        // SHOW EMPTY MESSAGE
+        // ============================================
+
+        function showEmptyMessage() {
+
+            const existingMessage =
+                document.getElementById(
+                    "emptyTasksMessage"
+                );
+
+
+            if (existingMessage) {
+
+                return;
+
+            }
+
+
+            const message =
+                document.createElement(
+                    "p"
+                );
+
+
+            message.id =
+                "emptyTasksMessage";
+
+
+            message.className =
+                "empty-tasks";
+
+
+            message.textContent =
+                "No tasks created yet.";
+
+
+            taskList.appendChild(
+                message
+            );
+
+        }
+
+
+        // ============================================
+        // SOCKET CONNECTED
+        // ============================================
+
+        socket.on(
+            "connect",
+
+            () => {
+
+                console.log(
+                    "🔌 Connected to TeamFlow Socket.IO"
+                );
+
+
+                showRealtimeStatus(
+                    "Real-time task updates connected"
+                );
+
+            }
+        );
+
+
+        // ============================================
+        // SOCKET ERROR
+        // ============================================
+
+        socket.on(
+            "connect_error",
+
+            (error) => {
+
+                console.error(
+                    "Socket connection error:",
+                    error
+                );
+
+            }
+        );
+
+
+        // ============================================
+        // TASK CREATED
+        // ============================================
+
+        socket.on(
+            "task:created",
+
+            (task) => {
+
+                console.log(
+                    "⚡ TASK CREATED:",
+                    task
+                );
+
+
+                // ------------------------------------
+                // Ignore other projects
+                // ------------------------------------
+
+                if (
+                    !isCurrentProject(task)
+                ) {
+
+                    return;
+
+                }
+
+
+                // ------------------------------------
+                // Prevent duplicate cards
+                // ------------------------------------
+
+                const existingTask =
+                    document.getElementById(
+                        `task-${task.id}`
+                    );
+
+
+                if (existingTask) {
+
+                    return;
+
+                }
+
+
+                // ------------------------------------
+                // Remove "No tasks" message
+                // ------------------------------------
+
+                removeEmptyMessage();
+
+
+                // ------------------------------------
+                // Create card
+                // ------------------------------------
+
+                const card =
+                    createTaskCard(
+                        task
+                    );
+
+
+                // ------------------------------------
+                // Add at top
+                // ------------------------------------
+
+                taskList.prepend(
+                    card
+                );
+
+
+                showRealtimeStatus(
+                    "A new task was created"
+                );
+
+            }
+        );
+
+
+        // ============================================
+        // TASK UPDATED
+        // ============================================
+
+        socket.on(
+            "task:updated",
+
+            (task) => {
+
+                console.log(
+                    "⚡ TASK UPDATED:",
+                    task
+                );
+
+
+                // ------------------------------------
+                // Ignore other projects
+                // ------------------------------------
+
+                if (
+                    !isCurrentProject(task)
+                ) {
+
+                    return;
+
+                }
+
+
+                const card =
+                    document.getElementById(
+                        `task-${task.id}`
+                    );
+
+
+                // ------------------------------------
+                // If card doesn't exist
+                // ------------------------------------
+
+                if (!card) {
+
+                    const newCard =
+                        createTaskCard(
+                            task
+                        );
+
+
+                    removeEmptyMessage();
+
+
+                    taskList.prepend(
+                        newCard
+                    );
+
+
+                    showRealtimeStatus(
+                        "A task was updated"
+                    );
+
+
+                    return;
+
+                }
+
+
+                // ------------------------------------
+                // Update title
+                // ------------------------------------
+
+                const title =
+                    card.querySelector(
+                        ".task-title"
+                    );
+
+
+                if (title) {
+
+                    title.textContent =
+                        task.title;
+
+                }
+
+
+                // ------------------------------------
+                // Update description
+                // ------------------------------------
+
+                const description =
+                    card.querySelector(
+                        ".task-description"
+                    );
+
+
+                if (description) {
+
+                    description.textContent =
+                        task.description ||
+                        "No description";
+
+                }
+
+
+                // ------------------------------------
+                // Update status
+                // ------------------------------------
+
+                const status =
+                    card.querySelector(
+                        ".task-status"
+                    );
+
+
+                if (status) {
+
+                    status.textContent =
+                        task.status;
+
+                }
+
+
+                // ------------------------------------
+                // Update priority
+                // ------------------------------------
+
+                const priority =
+                    card.querySelector(
+                        ".task-priority"
+                    );
+
+
+                if (priority) {
+
+                    priority.textContent =
+                        task.priority;
+
+                }
+
+
+                // ------------------------------------
+                // Update due date
+                // ------------------------------------
+
+                const dueDate =
+                    card.querySelector(
+                        ".task-due-date"
+                    );
+
+
+                if (dueDate) {
+
+                    dueDate.textContent =
+                        task.due_date ||
+                        "No due date";
+
+                }
+
+
+                // ------------------------------------
+                // Update assignment
+                //
+                // Event currently contains
+                // assigned_to, not assignee_name.
+                // ------------------------------------
+
+                const assignee =
+                    card.querySelector(
+                        ".task-assignee"
+                    );
+
+
+                if (
+                    assignee &&
+                    task.assigned_to !==
+                    undefined
+                ) {
+
+                    assignee.textContent =
+                        task.assigned_to
+                            ? `User ${task.assigned_to}`
+                            : "Unassigned";
+
+                }
+
+
+                showRealtimeStatus(
+                    "Task updated in real-time"
+                );
+
+            }
+        );
+
+
+        // ============================================
+        // TASK DELETED
+        // ============================================
+
+        socket.on(
+            "task:deleted",
+
+            (task) => {
+
+                console.log(
+                    "⚡ TASK DELETED:",
+                    task
+                );
+
+
+                // ------------------------------------
+                // Ignore other projects
+                // ------------------------------------
+
+                if (
+                    Number(
+                        task.project_id
+                    ) !== currentProjectId
+                ) {
+
+                    return;
+
+                }
+
+
+                const card =
+                    document.getElementById(
+                        `task-${task.id}`
+                    );
+
+
+                if (!card) {
+
+                    return;
+
+                }
+
+
+                // ------------------------------------
+                // Remove task card
+                // ------------------------------------
+
+                card.remove();
+
+
+                // ------------------------------------
+                // Show empty message if needed
+                // ------------------------------------
+
+                const remainingTasks =
+                    taskList.querySelectorAll(
+                        ".task-card"
+                    );
+
+
+                if (
+                    remainingTasks.length === 0
+                ) {
+
+                    showEmptyMessage();
+
+                }
+
+
+                showRealtimeStatus(
+                    "Task deleted in real-time"
+                );
+
+            }
+        );
+
+
+    </script>
+
 
 </body>
 

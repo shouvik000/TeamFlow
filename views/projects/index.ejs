@@ -10,109 +10,843 @@
         content="width=device-width, initial-scale=1.0"
     >
 
-    <title>Projects | TeamFlow</title>
+    <title>
+        Projects | TeamFlow
+    </title>
 
-    <link rel="stylesheet" href="/css/style.css">
+    <link
+        rel="stylesheet"
+        href="/css/style.css"
+    >
+
+    <style>
+
+        .project-card {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-top: 15px;
+            border-radius: 8px;
+            background: #ffffff;
+        }
+
+        .realtime-status {
+            margin-top: 10px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            background: #e8f5e9;
+            color: #2e7d32;
+            font-size: 14px;
+            display: none;
+        }
+
+        .empty-projects {
+            margin-top: 15px;
+        }
+
+        .project-status {
+            font-weight: bold;
+        }
+
+    </style>
 
 </head>
 
 
 <body>
 
+
     <div class="auth-container">
 
+
         <div class="auth-card">
+
+
+            <!-- ==========================================
+                 ORGANIZATION NAME
+            =========================================== -->
 
             <h1>
                 <%= organization.name %>
             </h1>
 
-            <h2>Projects</h2>
 
+            <h2>
+                Projects
+            </h2>
+
+
+            <!-- ==========================================
+                 TOTAL PROJECTS
+            =========================================== -->
 
             <p>
+
                 Total Projects:
-                <strong>
+
+                <strong id="projectCount">
                     <%= projects.length %>
                 </strong>
+
             </p>
 
 
+            <!-- ==========================================
+                 CREATE PROJECT
+            =========================================== -->
+
             <p>
+
                 <a href="/projects/create">
                     + Create Project
                 </a>
+
             </p>
 
 
-            <% if (projects.length === 0) { %>
+            <!-- ==========================================
+                 REAL-TIME STATUS
+            =========================================== -->
 
-                <p>
-                    No projects created yet.
-                </p>
+            <div
+                id="realtimeStatus"
+                class="realtime-status"
+            >
+                Real-time project updates enabled
+            </div>
 
-            <% } %>
+
+            <!-- ==========================================
+                 PROJECT LIST
+            =========================================== -->
+
+            <div id="projectList">
 
 
-            <% projects.forEach(project => { %>
+                <% if (projects.length === 0) { %>
 
-                <div
-                    style="
-                        border: 1px solid #ddd;
-                        padding: 15px;
-                        margin-top: 15px;
-                        border-radius: 8px;
-                    "
-                >
-
-                    <h3>
-                        <%= project.name %>
-                    </h3>
-                      
-
-                    <p>
-
-                          <a href="/projects/<%= project.id %>/tasks">
-                             View Tasks
-                          </a>
-
-                     </p>
-
-                     
-                    <p>
-                        <%= project.description || "No description" %>
+                    <p
+                        id="emptyProjectsMessage"
+                        class="empty-projects"
+                    >
+                        No projects created yet.
                     </p>
 
-
-                    <p>
-                        Status:
-                        <strong>
-                            <%= project.status %>
-                        </strong>
-                    </p>
+                <% } %>
 
 
-                    <p>
-                        Created by:
-                        <%= project.created_by_name %>
-                    </p>
+                <% projects.forEach(project => { %>
 
-                </div>
 
-            <% }) %>
+                    <div
+                        class="project-card"
+                        id="project-<%= project.id %>"
+                        data-project-id="<%= project.id %>"
+                    >
 
+
+                        <!-- ==================================
+                             PROJECT NAME
+                        =================================== -->
+
+                        <h3 class="project-name">
+
+                            <%= project.name %>
+
+                        </h3>
+
+
+                        <!-- ==================================
+                             VIEW TASKS
+                        =================================== -->
+
+                        <p>
+
+                            <a
+                                href="/projects/<%= project.id %>/tasks"
+                            >
+                                View Tasks
+                            </a>
+
+                        </p>
+
+
+                        <!-- ==================================
+                             DESCRIPTION
+                        =================================== -->
+
+                        <p class="project-description">
+
+                            <%= project.description
+                                || "No description" %>
+
+                        </p>
+
+
+                        <!-- ==================================
+                             STATUS
+                        =================================== -->
+
+                        <p>
+
+                            Status:
+
+                            <strong class="project-status">
+
+                                <%= project.status %>
+
+                            </strong>
+
+                        </p>
+
+
+                        <!-- ==================================
+                             CREATED BY
+                        =================================== -->
+
+                        <p>
+
+                            Created by:
+
+                            <span class="project-creator">
+
+                                <%= project.created_by_name
+                                    || "Unknown" %>
+
+                            </span>
+
+                        </p>
+
+
+                    </div>
+
+
+                <% }) %>
+
+
+            </div>
+
+
+            <!-- ==========================================
+                 BACK TO DASHBOARD
+            =========================================== -->
 
             <p class="auth-footer">
 
                 <a href="/dashboard">
+
                     ← Dashboard
+
                 </a>
 
             </p>
 
+
         </div>
 
     </div>
+
+
+    <!-- ==============================================
+         SOCKET.IO CLIENT
+    =============================================== -->
+
+    <script src="/socket.io/socket.io.js"></script>
+
+
+    <script>
+
+        // ============================================
+        // SOCKET.IO CONNECTION
+        // ============================================
+
+        const socket =
+            io();
+
+
+        // ============================================
+        // ELEMENT REFERENCES
+        // ============================================
+
+        const projectList =
+            document.getElementById(
+                "projectList"
+            );
+
+
+        const projectCount =
+            document.getElementById(
+                "projectCount"
+            );
+
+
+        const realtimeStatus =
+            document.getElementById(
+                "realtimeStatus"
+            );
+
+
+        // ============================================
+        // SHOW REAL-TIME STATUS
+        // ============================================
+
+        function showRealtimeStatus(
+            message
+        ) {
+
+            if (!realtimeStatus) {
+
+                return;
+
+            }
+
+
+            realtimeStatus.textContent =
+                message;
+
+
+            realtimeStatus.style.display =
+                "block";
+
+
+            setTimeout(
+                () => {
+
+                    realtimeStatus.style.display =
+                        "none";
+
+                },
+                3000
+            );
+
+        }
+
+
+        // ============================================
+        // ESCAPE HTML
+        // ============================================
+
+        function escapeHtml(
+            value
+        ) {
+
+            if (
+                value === null ||
+                value === undefined
+            ) {
+
+                return "";
+
+            }
+
+
+            return String(value)
+                .replace(
+                    /&/g,
+                    "&amp;"
+                )
+                .replace(
+                    /</g,
+                    "&lt;"
+                )
+                .replace(
+                    />/g,
+                    "&gt;"
+                )
+                .replace(
+                    /"/g,
+                    "&quot;"
+                )
+                .replace(
+                    /'/g,
+                    "&#039;"
+                );
+
+        }
+
+
+        // ============================================
+        // UPDATE PROJECT COUNT
+        // ============================================
+
+        function updateProjectCount() {
+
+            const cards =
+                projectList.querySelectorAll(
+                    ".project-card"
+                );
+
+
+            projectCount.textContent =
+                cards.length;
+
+        }
+
+
+        // ============================================
+        // REMOVE EMPTY MESSAGE
+        // ============================================
+
+        function removeEmptyMessage() {
+
+            const message =
+                document.getElementById(
+                    "emptyProjectsMessage"
+                );
+
+
+            if (message) {
+
+                message.remove();
+
+            }
+
+        }
+
+
+        // ============================================
+        // SHOW EMPTY MESSAGE
+        // ============================================
+
+        function showEmptyMessage() {
+
+            const existingMessage =
+                document.getElementById(
+                    "emptyProjectsMessage"
+                );
+
+
+            if (existingMessage) {
+
+                return;
+
+            }
+
+
+            const message =
+                document.createElement(
+                    "p"
+                );
+
+
+            message.id =
+                "emptyProjectsMessage";
+
+
+            message.className =
+                "empty-projects";
+
+
+            message.textContent =
+                "No projects created yet.";
+
+
+            projectList.appendChild(
+                message
+            );
+
+        }
+
+
+        // ============================================
+        // CREATE PROJECT CARD
+        // ============================================
+
+        function createProjectCard(
+            project
+        ) {
+
+            const card =
+                document.createElement(
+                    "div"
+                );
+
+
+            card.className =
+                "project-card";
+
+
+            card.id =
+                `project-${project.id}`;
+
+
+            card.dataset.projectId =
+                project.id;
+
+
+            card.innerHTML = `
+
+                <h3 class="project-name">
+
+                    ${escapeHtml(
+                        project.name
+                    )}
+
+                </h3>
+
+
+                <p>
+
+                    <a
+                        href="/projects/${encodeURIComponent(project.id)}/tasks"
+                    >
+                        View Tasks
+                    </a>
+
+                </p>
+
+
+                <p class="project-description">
+
+                    ${escapeHtml(
+                        project.description ||
+                        "No description"
+                    )}
+
+                </p>
+
+
+                <p>
+
+                    Status:
+
+                    <strong class="project-status">
+
+                        ${escapeHtml(
+                            project.status ||
+                            "ACTIVE"
+                        )}
+
+                    </strong>
+
+                </p>
+
+
+                <p>
+
+                    Created by:
+
+                    <span class="project-creator">
+
+                        ${
+                            escapeHtml(
+                                project.created_by_name ||
+                                "Unknown"
+                            )
+                        }
+
+                    </span>
+
+                </p>
+
+            `;
+
+
+            return card;
+
+        }
+
+
+        // ============================================
+        // SOCKET CONNECTED
+        // ============================================
+
+        socket.on(
+            "connect",
+
+            () => {
+
+                console.log(
+                    "🔌 Connected to TeamFlow Socket.IO"
+                );
+
+
+                showRealtimeStatus(
+                    "Real-time project updates connected"
+                );
+
+            }
+        );
+
+
+        // ============================================
+        // SOCKET CONNECTION ERROR
+        // ============================================
+
+        socket.on(
+            "connect_error",
+
+            (error) => {
+
+                console.error(
+                    "Socket connection error:",
+                    error
+                );
+
+            }
+        );
+
+
+        // ============================================
+        // PROJECT CREATED
+        // ============================================
+
+        socket.on(
+            "project:created",
+
+            (project) => {
+
+                console.log(
+                    "⚡ PROJECT CREATED:",
+                    project
+                );
+
+
+                // ------------------------------------
+                // Prevent duplicate project
+                // ------------------------------------
+
+                const existingProject =
+                    document.getElementById(
+                        `project-${project.id}`
+                    );
+
+
+                if (existingProject) {
+
+                    return;
+
+                }
+
+
+                // ------------------------------------
+                // Remove empty message
+                // ------------------------------------
+
+                removeEmptyMessage();
+
+
+                // ------------------------------------
+                // Create project card
+                // ------------------------------------
+
+                const card =
+                    createProjectCard(
+                        project
+                    );
+
+
+                // ------------------------------------
+                // Add project to top
+                // ------------------------------------
+
+                projectList.prepend(
+                    card
+                );
+
+
+                // ------------------------------------
+                // Update count
+                // ------------------------------------
+
+                updateProjectCount();
+
+
+                showRealtimeStatus(
+                    "A new project was created"
+                );
+
+            }
+        );
+
+
+        // ============================================
+        // PROJECT UPDATED
+        // ============================================
+
+        socket.on(
+            "project:updated",
+
+            (project) => {
+
+                console.log(
+                    "⚡ PROJECT UPDATED:",
+                    project
+                );
+
+
+                const card =
+                    document.getElementById(
+                        `project-${project.id}`
+                    );
+
+
+                // ------------------------------------
+                // If project is not currently shown
+                // ------------------------------------
+
+                if (!card) {
+
+                    const newCard =
+                        createProjectCard(
+                            project
+                        );
+
+
+                    removeEmptyMessage();
+
+
+                    projectList.prepend(
+                        newCard
+                    );
+
+
+                    updateProjectCount();
+
+
+                    showRealtimeStatus(
+                        "A project was updated"
+                    );
+
+
+                    return;
+
+                }
+
+
+                // ------------------------------------
+                // Update name
+                // ------------------------------------
+
+                const name =
+                    card.querySelector(
+                        ".project-name"
+                    );
+
+
+                if (name) {
+
+                    name.textContent =
+                        project.name;
+
+                }
+
+
+                // ------------------------------------
+                // Update description
+                // ------------------------------------
+
+                const description =
+                    card.querySelector(
+                        ".project-description"
+                    );
+
+
+                if (description) {
+
+                    description.textContent =
+                        project.description ||
+                        "No description";
+
+                }
+
+
+                // ------------------------------------
+                // Update status
+                // ------------------------------------
+
+                const status =
+                    card.querySelector(
+                        ".project-status"
+                    );
+
+
+                if (status) {
+
+                    status.textContent =
+                        project.status;
+
+                }
+
+
+                showRealtimeStatus(
+                    "Project updated in real-time"
+                );
+
+            }
+        );
+
+
+        // ============================================
+        // PROJECT DELETED
+        // ============================================
+
+        socket.on(
+            "project:deleted",
+
+            (project) => {
+
+                console.log(
+                    "⚡ PROJECT DELETED:",
+                    project
+                );
+
+
+                const card =
+                    document.getElementById(
+                        `project-${project.id}`
+                    );
+
+
+                if (!card) {
+
+                    return;
+
+                }
+
+
+                // ------------------------------------
+                // Remove project card
+                // ------------------------------------
+
+                card.remove();
+
+
+                // ------------------------------------
+                // Update count
+                // ------------------------------------
+
+                updateProjectCount();
+
+
+                // ------------------------------------
+                // Show empty message if required
+                // ------------------------------------
+
+                const remainingProjects =
+                    projectList.querySelectorAll(
+                        ".project-card"
+                    );
+
+
+                if (
+                    remainingProjects.length === 0
+                ) {
+
+                    showEmptyMessage();
+
+                }
+
+
+                showRealtimeStatus(
+                    "Project deleted in real-time"
+                );
+
+            }
+        );
+
+
+    </script>
+
 
 </body>
 

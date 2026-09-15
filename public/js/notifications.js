@@ -1,16 +1,37 @@
+//
+// ============================================
+// TEAMFLOW SHARED SOCKET.IO CONNECTION
+// ============================================
+//
+// IMPORTANT:
+// Create the socket immediately so other
+// frontend scripts can use:
+// window.teamFlowSocket
+//
 
+const teamFlowSocket =
+    io();
+
+
+// ============================================
+// GLOBAL SHARED SOCKET
+// ============================================
+
+window.teamFlowSocket =
+    teamFlowSocket;
+
+
+// ============================================
+// DOM READY
+// ============================================
 
 document.addEventListener(
     "DOMContentLoaded",
     () => {
 
         // ========================================
-        // Connect to Socket.IO
+        // NOTIFICATION BADGE
         // ========================================
-
-        const socket =
-            io();
-
 
         const badge =
             document.getElementById(
@@ -19,7 +40,7 @@ document.addEventListener(
 
 
         // ========================================
-        // Load current unread count
+        // LOAD UNREAD NOTIFICATION COUNT
         // ========================================
 
         async function loadUnreadNotifications() {
@@ -28,8 +49,28 @@ document.addEventListener(
 
                 const response =
                     await fetch(
-                        "/notifications/unread-count"
+                        "/notifications/unread-count",
+                        {
+                            method: "GET",
+
+                            headers: {
+                                "Accept":
+                                    "application/json"
+                            },
+
+                            credentials:
+                                "same-origin"
+                        }
                     );
+
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        `Notification request failed: ${response.status}`
+                    );
+
+                }
 
 
                 const data =
@@ -50,6 +91,7 @@ document.addEventListener(
                     data.count
                 );
 
+
             } catch (error) {
 
                 console.error(
@@ -63,7 +105,7 @@ document.addEventListener(
 
 
         // ========================================
-        // Update badge
+        // UPDATE BADGE
         // ========================================
 
         function updateBadge(
@@ -102,15 +144,16 @@ document.addEventListener(
 
 
         // ========================================
-        // New notification
+        // NEW NOTIFICATION
         // ========================================
 
-        socket.on(
+        teamFlowSocket.on(
             "notification:new",
+
             (notification) => {
 
                 console.log(
-                    "Real-time notification received:",
+                    "🔔 Real-time notification received:",
                     notification
                 );
 
@@ -127,12 +170,18 @@ document.addEventListener(
 
 
         // ========================================
-        // Refresh unread count
+        // REFRESH NOTIFICATION COUNT
         // ========================================
 
-        socket.on(
+        teamFlowSocket.on(
             "notification:refresh",
+
             () => {
+
+                console.log(
+                    "🔄 Refreshing notification count"
+                );
+
 
                 loadUnreadNotifications();
 
@@ -141,16 +190,22 @@ document.addEventListener(
 
 
         // ========================================
-        // Socket connected
+        // SOCKET CONNECTED
         // ========================================
 
-        socket.on(
+        teamFlowSocket.on(
             "connect",
+
             () => {
 
                 console.log(
-                    "Socket.IO connected:",
-                    socket.id
+                    "🔌 Shared Socket.IO connected:",
+                    teamFlowSocket.id
+                );
+
+
+                console.log(
+                    "✅ TeamFlow real-time connection ready"
                 );
 
             }
@@ -158,15 +213,16 @@ document.addEventListener(
 
 
         // ========================================
-        // Socket disconnected
+        // SOCKET DISCONNECTED
         // ========================================
 
-        socket.on(
+        teamFlowSocket.on(
             "disconnect",
+
             (reason) => {
 
                 console.log(
-                    "Socket.IO disconnected:",
+                    "🔌 Shared Socket.IO disconnected:",
                     reason
                 );
 
@@ -175,12 +231,37 @@ document.addEventListener(
 
 
         // ========================================
-        // Notification toast
+        // SOCKET CONNECTION ERROR
+        // ========================================
+
+        teamFlowSocket.on(
+            "connect_error",
+
+            (error) => {
+
+                console.error(
+                    "❌ Shared Socket.IO connection error:",
+                    error
+                );
+
+            }
+        );
+
+
+        // ========================================
+        // NOTIFICATION TOAST
         // ========================================
 
         function showNotificationToast(
             notification
         ) {
+
+            if (!notification) {
+
+                return;
+
+            }
+
 
             const toast =
                 document.createElement(
@@ -199,11 +280,17 @@ document.addEventListener(
             toast.innerHTML = `
 
                 <strong>
-                    🔔 ${escapeHtml(notification.title)}
+                    🔔 ${escapeHtml(
+                        notification.title
+                    )}
                 </strong>
 
                 <div class="small mt-1">
-                    ${escapeHtml(notification.message)}
+
+                    ${escapeHtml(
+                        notification.message
+                    )}
+
                 </div>
 
             `;
@@ -227,12 +314,22 @@ document.addEventListener(
 
 
         // ========================================
-        // Basic HTML escaping
+        // HTML ESCAPING
         // ========================================
 
         function escapeHtml(
             value
         ) {
+
+            if (
+                value === null ||
+                value === undefined
+            ) {
+
+                return "";
+
+            }
+
 
             const div =
                 document.createElement(
@@ -241,7 +338,7 @@ document.addEventListener(
 
 
             div.textContent =
-                value || "";
+                String(value);
 
 
             return div.innerHTML;
@@ -250,7 +347,7 @@ document.addEventListener(
 
 
         // ========================================
-        // Initial count
+        // INITIAL UNREAD COUNT
         // ========================================
 
         loadUnreadNotifications();

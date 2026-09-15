@@ -1,8 +1,24 @@
 const pool = require("../config/db");
 
+
+// ============================================
+// ACTIVITY SERVICE
+// ============================================
+
 const {
     createActivityLog
 } = require("../services/activityService");
+
+
+// ============================================
+// SOCKET.IO SERVICE
+// ============================================
+
+const {
+    emitProjectCreated,
+    emitProjectUpdated,
+    emitProjectDeleted
+} = require("../services/socketService");
 
 
 // ============================================
@@ -20,24 +36,37 @@ exports.getProjects = async (req, res) => {
             `
             SELECT
                 p.id,
+                p.organization_id,
                 p.name,
                 p.description,
                 p.status,
+                p.created_by,
                 p.created_at,
+                p.updated_at,
                 u.name AS created_by_name
+
             FROM projects p
+
             JOIN users u
                 ON u.id = p.created_by
+
             WHERE p.organization_id = $1
+
             ORDER BY p.created_at DESC
             `,
-            [organizationId]
+            [
+                organizationId
+            ]
         );
 
 
-        res.render("projects/index", {
-            projects: result.rows
-        });
+        res.render(
+            "projects/index",
+            {
+                projects:
+                    result.rows
+            }
+        );
 
     } catch (error) {
 
@@ -49,7 +78,9 @@ exports.getProjects = async (req, res) => {
         res.status(500).send(
             "Failed to load projects"
         );
+
     }
+
 };
 
 
@@ -57,9 +88,14 @@ exports.getProjects = async (req, res) => {
 // Show create project page
 // ============================================
 
-exports.showCreateProject = (req, res) => {
+exports.showCreateProject = (
+    req,
+    res
+) => {
 
-    res.render("projects/create");
+    res.render(
+        "projects/create"
+    );
 
 };
 
@@ -80,7 +116,10 @@ exports.createProject = async (req, res) => {
     // Validation
     // ========================================
 
-    if (!name || !name.trim()) {
+    if (
+        !name ||
+        !name.trim()
+    ) {
 
         return res.status(400).send(
             "Project name is required"
@@ -102,37 +141,44 @@ exports.createProject = async (req, res) => {
         // Create project
         // ====================================
 
-        const projectResult = await pool.query(
-            `
-            INSERT INTO projects
-            (
-                organization_id,
-                name,
-                description,
-                created_by
-            )
-            VALUES
-            (
-                $1,
-                $2,
-                $3,
-                $4
-            )
-            RETURNING
-                id,
-                name,
-                description,
-                status
-            `,
-            [
-                organizationId,
-                name.trim(),
-                description
-                    ? description.trim()
-                    : null,
-                userId
-            ]
-        );
+        const projectResult =
+            await pool.query(
+                `
+                INSERT INTO projects
+                (
+                    organization_id,
+                    name,
+                    description,
+                    created_by
+                )
+
+                VALUES
+                (
+                    $1,
+                    $2,
+                    $3,
+                    $4
+                )
+
+                RETURNING
+                    id,
+                    organization_id,
+                    name,
+                    description,
+                    status,
+                    created_by,
+                    created_at,
+                    updated_at
+                `,
+                [
+                    organizationId,
+                    name.trim(),
+                    description
+                        ? description.trim()
+                        : null,
+                    userId
+                ]
+            );
 
 
         const project =
@@ -149,11 +195,14 @@ exports.createProject = async (req, res) => {
 
             userId,
 
-            action: "PROJECT_CREATED",
+            action:
+                "PROJECT_CREATED",
 
-            entityType: "PROJECT",
+            entityType:
+                "PROJECT",
 
-            entityId: project.id,
+            entityId:
+                project.id,
 
             description:
                 `Created project "${project.name}"`
@@ -161,7 +210,27 @@ exports.createProject = async (req, res) => {
         });
 
 
-        res.redirect("/projects");
+        // ====================================
+        // REAL-TIME PROJECT CREATED
+        // ====================================
+
+        emitProjectCreated(
+            project
+        );
+
+
+        console.log(
+            `⚡ Real-time PROJECT_CREATED emitted: ${project.id}`
+        );
+
+
+        // ====================================
+        // Redirect
+        // ====================================
+
+        res.redirect(
+            "/projects"
+        );
 
     } catch (error) {
 
@@ -173,7 +242,9 @@ exports.createProject = async (req, res) => {
         res.status(500).send(
             "Failed to create project"
         );
+
     }
+
 };
 
 
@@ -183,7 +254,9 @@ exports.createProject = async (req, res) => {
 
 exports.showEditProject = async (req, res) => {
 
-    const { projectId } = req.params;
+    const {
+        projectId
+    } = req.params;
 
     const organizationId =
         req.session.user.organizationId;
@@ -191,25 +264,34 @@ exports.showEditProject = async (req, res) => {
 
     try {
 
-        const result = await pool.query(
-            `
-            SELECT
-                id,
-                name,
-                description,
-                status
-            FROM projects
-            WHERE id = $1
-              AND organization_id = $2
-            `,
-            [
-                projectId,
-                organizationId
-            ]
-        );
+        const result =
+            await pool.query(
+                `
+                SELECT
+                    id,
+                    organization_id,
+                    name,
+                    description,
+                    status,
+                    created_by,
+                    created_at,
+                    updated_at
+
+                FROM projects
+
+                WHERE id = $1
+                  AND organization_id = $2
+                `,
+                [
+                    projectId,
+                    organizationId
+                ]
+            );
 
 
-        if (result.rows.length === 0) {
+        if (
+            result.rows.length === 0
+        ) {
 
             return res.status(404).send(
                 "Project not found"
@@ -218,9 +300,13 @@ exports.showEditProject = async (req, res) => {
         }
 
 
-        res.render("projects/edit", {
-            project: result.rows[0]
-        });
+        res.render(
+            "projects/edit",
+            {
+                project:
+                    result.rows[0]
+            }
+        );
 
     } catch (error) {
 
@@ -232,7 +318,9 @@ exports.showEditProject = async (req, res) => {
         res.status(500).send(
             "Failed to load edit project page"
         );
+
     }
+
 };
 
 
@@ -242,7 +330,10 @@ exports.showEditProject = async (req, res) => {
 
 exports.updateProject = async (req, res) => {
 
-    const { projectId } = req.params;
+    const {
+        projectId
+    } = req.params;
+
 
     const {
         name,
@@ -264,7 +355,10 @@ exports.updateProject = async (req, res) => {
         // Validation
         // ====================================
 
-        if (!name || !name.trim()) {
+        if (
+            !name ||
+            !name.trim()
+        ) {
 
             return res.status(400).send(
                 "Project name is required"
@@ -305,9 +399,16 @@ exports.updateProject = async (req, res) => {
                 `
                 SELECT
                     id,
+                    organization_id,
                     name,
-                    status
+                    description,
+                    status,
+                    created_by,
+                    created_at,
+                    updated_at
+
                 FROM projects
+
                 WHERE id = $1
                   AND organization_id = $2
                 `,
@@ -318,7 +419,9 @@ exports.updateProject = async (req, res) => {
             );
 
 
-        if (existingResult.rows.length === 0) {
+        if (
+            existingResult.rows.length === 0
+        ) {
 
             return res.status(404).send(
                 "Project not found"
@@ -351,8 +454,13 @@ exports.updateProject = async (req, res) => {
 
                 RETURNING
                     id,
+                    organization_id,
                     name,
-                    status
+                    description,
+                    status,
+                    created_by,
+                    created_at,
+                    updated_at
                 `,
                 [
                     name.trim(),
@@ -375,11 +483,22 @@ exports.updateProject = async (req, res) => {
 
 
         // ====================================
-        // Activity log
+        // Activity description
         // ====================================
 
         let descriptionText =
             `Updated project "${updatedProject.name}"`;
+
+
+        if (
+            oldProject.name !==
+            updatedProject.name
+        ) {
+
+            descriptionText +=
+                ` | Name: ${oldProject.name} → ${updatedProject.name}`;
+
+        }
 
 
         if (
@@ -393,24 +512,52 @@ exports.updateProject = async (req, res) => {
         }
 
 
+        // ====================================
+        // Activity log
+        // ====================================
+
         await createActivityLog({
 
             organizationId,
 
             userId,
 
-            action: "PROJECT_UPDATED",
+            action:
+                "PROJECT_UPDATED",
 
-            entityType: "PROJECT",
+            entityType:
+                "PROJECT",
 
-            entityId: updatedProject.id,
+            entityId:
+                updatedProject.id,
 
-            description: descriptionText
+            description:
+                descriptionText
 
         });
 
 
-        res.redirect("/projects");
+        // ====================================
+        // REAL-TIME PROJECT UPDATED
+        // ====================================
+
+        emitProjectUpdated(
+            updatedProject
+        );
+
+
+        console.log(
+            `⚡ Real-time PROJECT_UPDATED emitted: ${updatedProject.id}`
+        );
+
+
+        // ====================================
+        // Redirect
+        // ====================================
+
+        res.redirect(
+            "/projects"
+        );
 
     } catch (error) {
 
@@ -422,7 +569,9 @@ exports.updateProject = async (req, res) => {
         res.status(500).send(
             "Failed to update project"
         );
+
     }
+
 };
 
 
@@ -432,7 +581,10 @@ exports.updateProject = async (req, res) => {
 
 exports.deleteProject = async (req, res) => {
 
-    const { projectId } = req.params;
+    const {
+        projectId
+    } = req.params;
+
 
     const organizationId =
         req.session.user.organizationId;
@@ -452,8 +604,11 @@ exports.deleteProject = async (req, res) => {
                 `
                 SELECT
                     id,
+                    organization_id,
                     name
+
                 FROM projects
+
                 WHERE id = $1
                   AND organization_id = $2
                 `,
@@ -464,7 +619,9 @@ exports.deleteProject = async (req, res) => {
             );
 
 
-        if (projectResult.rows.length === 0) {
+        if (
+            projectResult.rows.length === 0
+        ) {
 
             return res.status(404).send(
                 "Project not found"
@@ -484,6 +641,7 @@ exports.deleteProject = async (req, res) => {
         await pool.query(
             `
             DELETE FROM projects
+
             WHERE id = $1
               AND organization_id = $2
             `,
@@ -504,11 +662,14 @@ exports.deleteProject = async (req, res) => {
 
             userId,
 
-            action: "PROJECT_DELETED",
+            action:
+                "PROJECT_DELETED",
 
-            entityType: "PROJECT",
+            entityType:
+                "PROJECT",
 
-            entityId: project.id,
+            entityId:
+                project.id,
 
             description:
                 `Deleted project "${project.name}"`
@@ -516,7 +677,27 @@ exports.deleteProject = async (req, res) => {
         });
 
 
-        res.redirect("/projects");
+        // ====================================
+        // REAL-TIME PROJECT DELETED
+        // ====================================
+
+        emitProjectDeleted(
+            project
+        );
+
+
+        console.log(
+            `⚡ Real-time PROJECT_DELETED emitted: ${project.id}`
+        );
+
+
+        // ====================================
+        // Redirect
+        // ====================================
+
+        res.redirect(
+            "/projects"
+        );
 
     } catch (error) {
 
@@ -528,5 +709,7 @@ exports.deleteProject = async (req, res) => {
         res.status(500).send(
             "Failed to delete project"
         );
+
     }
+
 };

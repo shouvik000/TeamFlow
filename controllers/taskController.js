@@ -1,12 +1,33 @@
 const pool = require("../config/db");
 
+
+// ============================================
+// ACTIVITY SERVICE
+// ============================================
+
 const {
     createActivityLog
 } = require("../services/activityService");
 
+
+// ============================================
+// NOTIFICATION SERVICE
+// ============================================
+
 const {
     createNotification
 } = require("../services/notificationService");
+
+
+// ============================================
+// SOCKET.IO SERVICE
+// ============================================
+
+const {
+    emitTaskCreated,
+    emitTaskUpdated,
+    emitTaskDeleted
+} = require("../services/socketService");
 
 
 // ============================================
@@ -22,7 +43,10 @@ exports.getTasks = async (req, res) => {
 
     try {
 
+        // ============================================
         // Verify project belongs to current organization
+        // ============================================
+
         const projectResult = await pool.query(
             `
             SELECT
@@ -30,7 +54,9 @@ exports.getTasks = async (req, res) => {
                 name,
                 description,
                 status
+
             FROM projects
+
             WHERE id = $1
               AND organization_id = $2
             `,
@@ -40,26 +66,38 @@ exports.getTasks = async (req, res) => {
             ]
         );
 
+
         if (projectResult.rows.length === 0) {
+
             return res.status(404).send(
                 "Project not found"
             );
+
         }
 
-        const project = projectResult.rows[0];
+
+        const project =
+            projectResult.rows[0];
 
 
+        // ============================================
         // Get tasks
+        // ============================================
+
         const taskResult = await pool.query(
             `
             SELECT
                 t.id,
+                t.project_id,
+                t.organization_id,
                 t.title,
                 t.description,
                 t.status,
                 t.priority,
+                t.assigned_to,
                 t.due_date,
                 t.created_at,
+                t.updated_at,
 
                 assignee.name AS assignee_name,
 
@@ -85,10 +123,13 @@ exports.getTasks = async (req, res) => {
         );
 
 
-        res.render("tasks/index", {
-            project: project,
-            tasks: taskResult.rows
-        });
+        res.render(
+            "tasks/index",
+            {
+                project: project,
+                tasks: taskResult.rows
+            }
+        );
 
     } catch (error) {
 
@@ -100,7 +141,9 @@ exports.getTasks = async (req, res) => {
         res.status(500).send(
             "Failed to load tasks"
         );
+
     }
+
 };
 
 
@@ -117,13 +160,18 @@ exports.showCreateTask = async (req, res) => {
 
     try {
 
+        // ============================================
         // Get project
+        // ============================================
+
         const projectResult = await pool.query(
             `
             SELECT
                 id,
                 name
+
             FROM projects
+
             WHERE id = $1
               AND organization_id = $2
             `,
@@ -135,13 +183,18 @@ exports.showCreateTask = async (req, res) => {
 
 
         if (projectResult.rows.length === 0) {
+
             return res.status(404).send(
                 "Project not found"
             );
+
         }
 
 
+        // ============================================
         // Get organization members
+        // ============================================
+
         const membersResult = await pool.query(
             `
             SELECT
@@ -149,6 +202,7 @@ exports.showCreateTask = async (req, res) => {
                 u.name,
                 u.email,
                 om.role
+
             FROM organization_members om
 
             JOIN users u
@@ -158,14 +212,22 @@ exports.showCreateTask = async (req, res) => {
 
             ORDER BY u.name ASC
             `,
-            [organizationId]
+            [
+                organizationId
+            ]
         );
 
 
-        res.render("tasks/create", {
-            project: projectResult.rows[0],
-            members: membersResult.rows
-        });
+        res.render(
+            "tasks/create",
+            {
+                project:
+                    projectResult.rows[0],
+
+                members:
+                    membersResult.rows
+            }
+        );
 
     } catch (error) {
 
@@ -177,7 +239,9 @@ exports.showCreateTask = async (req, res) => {
         res.status(500).send(
             "Failed to load task form"
         );
+
     }
+
 };
 
 
@@ -187,7 +251,9 @@ exports.showCreateTask = async (req, res) => {
 
 exports.createTask = async (req, res) => {
 
-    const { projectId } = req.params;
+    const { projectId } =
+        req.params;
+
 
     const {
         title,
@@ -198,10 +264,19 @@ exports.createTask = async (req, res) => {
     } = req.body;
 
 
-    if (!title || !title.trim()) {
+    // ============================================
+    // Validate title
+    // ============================================
+
+    if (
+        !title ||
+        !title.trim()
+    ) {
+
         return res.status(400).send(
             "Task title is required"
         );
+
     }
 
 
@@ -218,23 +293,28 @@ exports.createTask = async (req, res) => {
         // Verify project belongs to organization
         // ============================================
 
-        const projectResult = await pool.query(
-            `
-            SELECT
-                id,
-                name
-            FROM projects
-            WHERE id = $1
-              AND organization_id = $2
-            `,
-            [
-                projectId,
-                organizationId
-            ]
-        );
+        const projectResult =
+            await pool.query(
+                `
+                SELECT
+                    id,
+                    name
+
+                FROM projects
+
+                WHERE id = $1
+                  AND organization_id = $2
+                `,
+                [
+                    projectId,
+                    organizationId
+                ]
+            );
 
 
-        if (projectResult.rows.length === 0) {
+        if (
+            projectResult.rows.length === 0
+        ) {
 
             return res.status(404).send(
                 "Project not found"
@@ -253,6 +333,7 @@ exports.createTask = async (req, res) => {
 
         let assigneeId = null;
 
+
         if (assignedTo) {
 
             const memberResult =
@@ -260,6 +341,7 @@ exports.createTask = async (req, res) => {
                     `
                     SELECT
                         u.id
+
                     FROM organization_members om
 
                     JOIN users u
@@ -275,7 +357,9 @@ exports.createTask = async (req, res) => {
                 );
 
 
-            if (memberResult.rows.length === 0) {
+            if (
+                memberResult.rows.length === 0
+            ) {
 
                 return res.status(400).send(
                     "Selected user is not a member of this organization"
@@ -286,6 +370,7 @@ exports.createTask = async (req, res) => {
 
             assigneeId =
                 memberResult.rows[0].id;
+
         }
 
 
@@ -322,47 +407,58 @@ exports.createTask = async (req, res) => {
         // Create task
         // ============================================
 
-        const taskResult = await pool.query(
-            `
-            INSERT INTO tasks
-            (
-                project_id,
-                organization_id,
-                title,
-                description,
-                priority,
-                assigned_to,
-                due_date,
-                created_by
-            )
+        const taskResult =
+            await pool.query(
+                `
+                INSERT INTO tasks
+                (
+                    project_id,
+                    organization_id,
+                    title,
+                    description,
+                    priority,
+                    assigned_to,
+                    due_date,
+                    created_by
+                )
 
-            VALUES
-            (
-                $1,
-                $2,
-                $3,
-                $4,
-                $5,
-                $6,
-                $7,
-                $8
-            )
+                VALUES
+                (
+                    $1,
+                    $2,
+                    $3,
+                    $4,
+                    $5,
+                    $6,
+                    $7,
+                    $8
+                )
 
-            RETURNING
-                id,
-                title
-            `,
-            [
-                projectId,
-                organizationId,
-                title.trim(),
-                description || null,
-                selectedPriority,
-                assigneeId,
-                dueDate || null,
-                userId
-            ]
-        );
+                RETURNING
+                    id,
+                    project_id,
+                    organization_id,
+                    title,
+                    description,
+                    status,
+                    priority,
+                    assigned_to,
+                    due_date,
+                    created_by,
+                    created_at,
+                    updated_at
+                `,
+                [
+                    projectId,
+                    organizationId,
+                    title.trim(),
+                    description || null,
+                    selectedPriority,
+                    assigneeId,
+                    dueDate || null,
+                    userId
+                ]
+            );
 
 
         const task =
@@ -405,6 +501,20 @@ exports.createTask = async (req, res) => {
 
 
         // ============================================
+        // REAL-TIME TASK CREATED EVENT
+        // ============================================
+
+        emitTaskCreated(
+            task
+        );
+
+
+        console.log(
+            `Real-time TASK_CREATED emitted: ${task.id}`
+        );
+
+
+        // ============================================
         // Redirect
         // ============================================
 
@@ -423,7 +533,9 @@ exports.createTask = async (req, res) => {
         res.status(500).send(
             "Failed to create task"
         );
+
     }
+
 };
 
 
@@ -433,43 +545,53 @@ exports.createTask = async (req, res) => {
 
 exports.showEditTask = async (req, res) => {
 
-    const { taskId } = req.params;
+    const { taskId } =
+        req.params;
 
     const organizationId =
         req.session.user.organizationId;
 
+
     try {
 
-        const taskResult = await pool.query(
-            `
-            SELECT
-                t.id,
-                t.project_id,
-                t.title,
-                t.description,
-                t.status,
-                t.priority,
-                t.assigned_to,
-                t.due_date,
-                p.name AS project_name
+        // ============================================
+        // Get task
+        // ============================================
 
-            FROM tasks t
+        const taskResult =
+            await pool.query(
+                `
+                SELECT
+                    t.id,
+                    t.project_id,
+                    t.organization_id,
+                    t.title,
+                    t.description,
+                    t.status,
+                    t.priority,
+                    t.assigned_to,
+                    t.due_date,
+                    p.name AS project_name
 
-            JOIN projects p
-                ON p.id = t.project_id
+                FROM tasks t
 
-            WHERE t.id = $1
-              AND t.organization_id = $2
-              AND p.organization_id = $2
-            `,
-            [
-                taskId,
-                organizationId
-            ]
-        );
+                JOIN projects p
+                    ON p.id = t.project_id
+
+                WHERE t.id = $1
+                  AND t.organization_id = $2
+                  AND p.organization_id = $2
+                `,
+                [
+                    taskId,
+                    organizationId
+                ]
+            );
 
 
-        if (taskResult.rows.length === 0) {
+        if (
+            taskResult.rows.length === 0
+        ) {
 
             return res.status(404).send(
                 "Task not found"
@@ -482,32 +604,43 @@ exports.showEditTask = async (req, res) => {
             taskResult.rows[0];
 
 
+        // ============================================
         // Get organization members
-        const membersResult = await pool.query(
-            `
-            SELECT
-                u.id,
-                u.name,
-                u.email,
-                om.role
+        // ============================================
 
-            FROM organization_members om
+        const membersResult =
+            await pool.query(
+                `
+                SELECT
+                    u.id,
+                    u.name,
+                    u.email,
+                    om.role
 
-            JOIN users u
-                ON u.id = om.user_id
+                FROM organization_members om
 
-            WHERE om.organization_id = $1
+                JOIN users u
+                    ON u.id = om.user_id
 
-            ORDER BY u.name ASC
-            `,
-            [organizationId]
+                WHERE om.organization_id = $1
+
+                ORDER BY u.name ASC
+                `,
+                [
+                    organizationId
+                ]
+            );
+
+
+        res.render(
+            "tasks/edit",
+            {
+                task,
+
+                members:
+                    membersResult.rows
+            }
         );
-
-
-        res.render("tasks/edit", {
-            task,
-            members: membersResult.rows
-        });
 
 
     } catch (error) {
@@ -520,7 +653,9 @@ exports.showEditTask = async (req, res) => {
         res.status(500).send(
             "Failed to load edit task page"
         );
+
     }
+
 };
 
 
@@ -530,7 +665,9 @@ exports.showEditTask = async (req, res) => {
 
 exports.updateTask = async (req, res) => {
 
-    const { taskId } = req.params;
+    const { taskId } =
+        req.params;
+
 
     const {
         title,
@@ -555,7 +692,10 @@ exports.updateTask = async (req, res) => {
         // Validate title
         // ============================================
 
-        if (!title || !title.trim()) {
+        if (
+            !title ||
+            !title.trim()
+        ) {
 
             return res.status(400).send(
                 "Task title is required"
@@ -626,29 +766,38 @@ exports.updateTask = async (req, res) => {
         // Get existing task
         // ============================================
 
-        const taskResult = await pool.query(
-            `
-            SELECT
-                id,
-                project_id,
-                title,
-                status,
-                priority,
-                assigned_to
+        const taskResult =
+            await pool.query(
+                `
+                SELECT
+                    id,
+                    project_id,
+                    organization_id,
+                    title,
+                    description,
+                    status,
+                    priority,
+                    assigned_to,
+                    due_date,
+                    created_by,
+                    created_at,
+                    updated_at
 
-            FROM tasks
+                FROM tasks
 
-            WHERE id = $1
-              AND organization_id = $2
-            `,
-            [
-                taskId,
-                organizationId
-            ]
-        );
+                WHERE id = $1
+                  AND organization_id = $2
+                `,
+                [
+                    taskId,
+                    organizationId
+                ]
+            );
 
 
-        if (taskResult.rows.length === 0) {
+        if (
+            taskResult.rows.length === 0
+        ) {
 
             return res.status(404).send(
                 "Task not found"
@@ -679,6 +828,7 @@ exports.updateTask = async (req, res) => {
                     `
                     SELECT
                         u.id
+
                     FROM organization_members om
 
                     JOIN users u
@@ -694,7 +844,9 @@ exports.updateTask = async (req, res) => {
                 );
 
 
-            if (memberResult.rows.length === 0) {
+            if (
+                memberResult.rows.length === 0
+            ) {
 
                 return res.status(400).send(
                     "Selected user is not a member of this organization"
@@ -705,6 +857,7 @@ exports.updateTask = async (req, res) => {
 
             assigneeId =
                 memberResult.rows[0].id;
+
         }
 
 
@@ -731,10 +884,17 @@ exports.updateTask = async (req, res) => {
 
                 RETURNING
                     id,
+                    project_id,
+                    organization_id,
                     title,
+                    description,
                     status,
                     priority,
-                    assigned_to
+                    assigned_to,
+                    due_date,
+                    created_by,
+                    created_at,
+                    updated_at
                 `,
                 [
                     title.trim(),
@@ -783,6 +943,17 @@ exports.updateTask = async (req, res) => {
         }
 
 
+        if (
+            Number(oldTask.assigned_to) !==
+            Number(updatedTask.assigned_to)
+        ) {
+
+            descriptionText +=
+                ` | Assignee changed`;
+
+        }
+
+
         // ============================================
         // Create activity log
         // ============================================
@@ -793,7 +964,8 @@ exports.updateTask = async (req, res) => {
             action: "TASK_UPDATED",
             entityType: "TASK",
             entityId: updatedTask.id,
-            description: descriptionText
+            description:
+                descriptionText
         });
 
 
@@ -822,6 +994,20 @@ exports.updateTask = async (req, res) => {
 
 
         // ============================================
+        // REAL-TIME TASK UPDATED EVENT
+        // ============================================
+
+        emitTaskUpdated(
+            updatedTask
+        );
+
+
+        console.log(
+            `Real-time TASK_UPDATED emitted: ${updatedTask.id}`
+        );
+
+
+        // ============================================
         // Redirect
         // ============================================
 
@@ -840,7 +1026,9 @@ exports.updateTask = async (req, res) => {
         res.status(500).send(
             "Failed to update task"
         );
+
     }
+
 };
 
 
@@ -850,7 +1038,9 @@ exports.updateTask = async (req, res) => {
 
 exports.deleteTask = async (req, res) => {
 
-    const { taskId } = req.params;
+    const { taskId } =
+        req.params;
+
 
     const organizationId =
         req.session.user.organizationId;
@@ -865,26 +1055,30 @@ exports.deleteTask = async (req, res) => {
         // Find task first
         // ============================================
 
-        const taskResult = await pool.query(
-            `
-            SELECT
-                id,
-                project_id,
-                title
+        const taskResult =
+            await pool.query(
+                `
+                SELECT
+                    id,
+                    project_id,
+                    organization_id,
+                    title
 
-            FROM tasks
+                FROM tasks
 
-            WHERE id = $1
-              AND organization_id = $2
-            `,
-            [
-                taskId,
-                organizationId
-            ]
-        );
+                WHERE id = $1
+                  AND organization_id = $2
+                `,
+                [
+                    taskId,
+                    organizationId
+                ]
+            );
 
 
-        if (taskResult.rows.length === 0) {
+        if (
+            taskResult.rows.length === 0
+        ) {
 
             return res.status(404).send(
                 "Task not found"
@@ -931,6 +1125,20 @@ exports.deleteTask = async (req, res) => {
 
 
         // ============================================
+        // REAL-TIME TASK DELETED EVENT
+        // ============================================
+
+        emitTaskDeleted(
+            task
+        );
+
+
+        console.log(
+            ` Real-time TASK_DELETED emitted: ${task.id}`
+        );
+
+
+        // ============================================
         // Redirect
         // ============================================
 
@@ -949,5 +1157,7 @@ exports.deleteTask = async (req, res) => {
         res.status(500).send(
             "Failed to delete task"
         );
+
     }
+
 };

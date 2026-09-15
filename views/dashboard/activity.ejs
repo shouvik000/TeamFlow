@@ -10,84 +10,715 @@
         content="width=device-width, initial-scale=1.0"
     >
 
-    <title>Activity | TeamFlow</title>
+    <title>
+        Activity | TeamFlow
+    </title>
+
+   
 
     <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
         rel="stylesheet"
-        href="/css/style.css"
     >
 
 </head>
 
-<body>
 
-    <div class="auth-container">
-
-        <div class="auth-card">
-
-            <h1>
-                Team Activity
-            </h1>
-
-            <p>
-                Organization:
-                <strong>
-                    <%= organization.name %>
-                </strong>
-            </p>
-
-            <hr>
-
-            <% if (activities.length === 0) { %>
-
-                <p>
-                    No activity yet.
-                </p>
-
-            <% } %>
+<body class="bg-light">
 
 
-            <% activities.forEach(activity => { %>
+    <!-- ==========================================
+         NAVBAR
+    =========================================== -->
 
-                <div
-                    style="
-                        border: 1px solid #ddd;
-                        padding: 15px;
-                        margin-top: 15px;
-                        border-radius: 8px;
-                    "
+    <nav class="navbar navbar-dark bg-dark shadow-sm">
+
+        <div class="container">
+
+            <a
+                class="navbar-brand fw-bold"
+                href="/dashboard"
+            >
+                TeamFlow 🚀
+            </a>
+
+
+            <div class="d-flex align-items-center gap-2">
+
+                <a
+                    href="/dashboard"
+                    class="btn btn-outline-light btn-sm"
                 >
-
-                    <strong>
-                        <%= activity.user_name || "System" %>
-                    </strong>
-
-                    <p>
-                        <%= activity.description %>
-                    </p>
-
-                    <small>
-                        <%= new Date(
-                            activity.created_at
-                        ).toLocaleString() %>
-                    </small>
-
-                </div>
-
-            <% }) %>
-
-
-            <p class="auth-footer">
-
-                <a href="/dashboard">
-                    ← Dashboard
+                    Dashboard
                 </a>
 
-            </p>
+
+                <a
+                    href="/notifications"
+                    class="btn btn-outline-light btn-sm"
+                >
+                    🔔 Notifications
+                </a>
+
+            </div>
 
         </div>
 
-    </div>
+    </nav>
+
+
+    <!-- ==========================================
+         MAIN CONTENT
+    =========================================== -->
+
+    <main class="container py-5">
+
+
+        <!-- ========================================
+             HEADER
+        ========================================= -->
+
+        <div
+            class="d-flex justify-content-between align-items-center mb-4"
+        >
+
+            <div>
+
+                <h1 class="fw-bold mb-1">
+                    Team Activity
+                </h1>
+
+                <p class="text-muted mb-0">
+
+                    Organization:
+
+                    <strong>
+                        <%= organization.name %>
+                    </strong>
+
+                </p>
+
+            </div>
+
+
+            <div>
+
+                <span
+                    id="realtimeBadge"
+                    class="badge text-bg-success d-none"
+                >
+                    ● Live
+                </span>
+
+            </div>
+
+        </div>
+
+
+        <!-- ========================================
+             REAL-TIME STATUS
+        ========================================= -->
+
+        <div
+            id="realtimeStatus"
+            class="alert alert-success d-none shadow-sm"
+            role="alert"
+        >
+            Real-time activity updates enabled.
+        </div>
+
+
+        <!-- ========================================
+             ACTIVITY CARD
+        ========================================= -->
+
+        <div class="card border-0 shadow-sm">
+
+            <div class="card-body">
+
+
+                <div
+                    class="d-flex justify-content-between align-items-center mb-4"
+                >
+
+                    <h4 class="fw-bold mb-0">
+                        Activity Log
+                    </h4>
+
+
+                    <span
+                        id="activityCount"
+                        class="badge text-bg-secondary"
+                    >
+                        <%= activities.length %>
+                    </span>
+
+                </div>
+
+
+                <!-- ====================================
+                     ACTIVITY LIST
+                ===================================== -->
+
+                <div id="activityList">
+
+
+                    <% if (
+                        activities.length === 0
+                    ) { %>
+
+
+                        <div
+                            id="emptyActivityMessage"
+                            class="text-center py-5"
+                        >
+
+                            <div class="fs-1 mb-3">
+                                📋
+                            </div>
+
+                            <h5 class="fw-semibold">
+                                No activity yet
+                            </h5>
+
+                            <p class="text-muted mb-0">
+                                Organization activity will appear here.
+                            </p>
+
+                        </div>
+
+
+                    <% } %>
+
+
+                    <% activities.forEach(activity => { %>
+
+
+                        <div
+                            class="activity-item border rounded p-3 mb-3"
+                            id="activity-<%= activity.id %>"
+                            data-activity-id="<%= activity.id %>"
+                        >
+
+                            <div
+                                class="d-flex justify-content-between align-items-start gap-3"
+                            >
+
+                                <div>
+
+                                    <div class="mb-1">
+
+                                        <span class="fw-semibold">
+                                            <%= activity.user_name || "System" %>
+                                        </span>
+
+                                        <% if (activity.action) { %>
+
+                                            <span class="badge text-bg-primary ms-2">
+                                                <%= activity.action %>
+                                            </span>
+
+                                        <% } %>
+
+                                    </div>
+
+
+                                    <p class="mb-2">
+
+                                        <%= activity.description %>
+
+                                    </p>
+
+
+                                    <small class="text-muted">
+
+                                        <%= new Date(
+                                            activity.created_at
+                                        ).toLocaleString() %>
+
+                                    </small>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+                    <% }); %>
+
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ========================================
+             BACK
+        ========================================= -->
+
+        <div class="mt-4">
+
+            <a
+                href="/dashboard"
+                class="btn btn-outline-primary"
+            >
+                ← Back to Dashboard
+            </a>
+
+        </div>
+
+
+    </main>
+
+
+    <!-- ==========================================
+         BOOTSTRAP JS
+    =========================================== -->
+
+    <script
+        src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+    ></script>
+
+
+    <!-- ==========================================
+         SOCKET.IO CLIENT
+    =========================================== -->
+
+    <script
+        src="/socket.io/socket.io.js"
+    ></script>
+
+
+    <!-- ==========================================
+         SHARED TEAMFLOW SOCKET
+    =========================================== -->
+
+    <script
+        src="/js/notifications.js"
+    ></script>
+
+
+    <!-- ==========================================
+         REAL-TIME ACTIVITY
+    =========================================== -->
+
+    <script>
+
+        // ========================================
+        // Shared Socket.IO connection
+        // ========================================
+
+        const socket =
+            window.teamFlowSocket;
+
+
+        // ========================================
+        // Elements
+        // ========================================
+
+        const activityList =
+            document.getElementById(
+                "activityList"
+            );
+
+
+        const activityCount =
+            document.getElementById(
+                "activityCount"
+            );
+
+
+        const realtimeStatus =
+            document.getElementById(
+                "realtimeStatus"
+            );
+
+
+        const realtimeBadge =
+            document.getElementById(
+                "realtimeBadge"
+            );
+
+
+        // ========================================
+        // Escape HTML
+        // ========================================
+
+        function escapeHtml(
+            value
+        ) {
+
+            if (
+                value === null ||
+                value === undefined
+            ) {
+
+                return "";
+
+            }
+
+
+            const div =
+                document.createElement(
+                    "div"
+                );
+
+
+            div.textContent =
+                String(value);
+
+
+            return div.innerHTML;
+
+        }
+
+
+        // ========================================
+        // Show status
+        // ========================================
+
+        function showRealtimeStatus(
+            message
+        ) {
+
+            if (!realtimeStatus) {
+
+                return;
+
+            }
+
+
+            realtimeStatus.textContent =
+                message;
+
+
+            realtimeStatus.classList.remove(
+                "d-none"
+            );
+
+
+            setTimeout(
+                () => {
+
+                    realtimeStatus.classList.add(
+                        "d-none"
+                    );
+
+                },
+                3000
+            );
+
+        }
+
+
+        // ========================================
+        // Update activity count
+        // ========================================
+
+        function updateActivityCount() {
+
+            const items =
+                activityList.querySelectorAll(
+                    ".activity-item"
+                );
+
+
+            activityCount.textContent =
+                items.length;
+
+        }
+
+
+        // ========================================
+        // Remove empty message
+        // ========================================
+
+        function removeEmptyMessage() {
+
+            const message =
+                document.getElementById(
+                    "emptyActivityMessage"
+                );
+
+
+            if (message) {
+
+                message.remove();
+
+            }
+
+        }
+
+
+        // ========================================
+        // Create activity card
+        // ========================================
+
+        function createActivityCard(
+            activity
+        ) {
+
+            const card =
+                document.createElement(
+                    "div"
+                );
+
+
+            card.className =
+                "activity-item border rounded p-3 mb-3";
+
+
+            card.id =
+                `activity-${activity.id}`;
+
+
+            card.dataset.activityId =
+                activity.id;
+
+
+            const userName =
+                activity.user_name ||
+                "System";
+
+
+            const description =
+                activity.description ||
+                "Activity recorded";
+
+
+            const action =
+                activity.action ||
+                "ACTIVITY";
+
+
+            const createdAt =
+                activity.created_at
+                    ? new Date(
+                        activity.created_at
+                    ).toLocaleString()
+                    : new Date().toLocaleString();
+
+
+            card.innerHTML = `
+
+                <div
+                    class="d-flex justify-content-between align-items-start gap-3"
+                >
+
+                    <div>
+
+                        <div class="mb-1">
+
+                            <span class="fw-semibold">
+
+                                ${escapeHtml(
+                                    userName
+                                )}
+
+                            </span>
+
+
+                            <span
+                                class="badge text-bg-primary ms-2"
+                            >
+
+                                ${escapeHtml(
+                                    action
+                                )}
+
+                            </span>
+
+                        </div>
+
+
+                        <p class="mb-2">
+
+                            ${escapeHtml(
+                                description
+                            )}
+
+                        </p>
+
+
+                        <small class="text-muted">
+
+                            ${escapeHtml(
+                                createdAt
+                            )}
+
+                        </small>
+
+                    </div>
+
+                </div>
+
+            `;
+
+
+            return card;
+
+        }
+
+
+        // ========================================
+        // Socket connected
+        // ========================================
+
+        socket.on(
+            "connect",
+
+            () => {
+
+                console.log(
+                    "🔌 Activity page connected:",
+                    socket.id
+                );
+
+
+                if (realtimeBadge) {
+
+                    realtimeBadge.classList.remove(
+                        "d-none"
+                    );
+
+                }
+
+            }
+        );
+
+
+        // ========================================
+        // Socket disconnected
+        // ========================================
+
+        socket.on(
+            "disconnect",
+
+            (reason) => {
+
+                console.log(
+                    "🔌 Activity socket disconnected:",
+                    reason
+                );
+
+
+                if (realtimeBadge) {
+
+                    realtimeBadge.classList.add(
+                        "d-none"
+                    );
+
+                }
+
+            }
+        );
+
+
+        // ========================================
+        // NEW ACTIVITY
+        // ========================================
+
+        socket.on(
+            "activity:new",
+
+            (activity) => {
+
+                console.log(
+                    "⚡ New activity received:",
+                    activity
+                );
+
+
+                if (!activity) {
+
+                    return;
+
+                }
+
+
+                // ------------------------------------
+                // Prevent duplicates
+                // ------------------------------------
+
+                const existing =
+                    document.getElementById(
+                        `activity-${activity.id}`
+                    );
+
+
+                if (existing) {
+
+                    return;
+
+                }
+
+
+                // ------------------------------------
+                // Remove empty state
+                // ------------------------------------
+
+                removeEmptyMessage();
+
+
+                // ------------------------------------
+                // Create card
+                // ------------------------------------
+
+                const card =
+                    createActivityCard(
+                        activity
+                    );
+
+
+                // ------------------------------------
+                // Add newest activity to top
+                // ------------------------------------
+
+                activityList.prepend(
+                    card
+                );
+
+
+                // ------------------------------------
+                // Update count
+                // ------------------------------------
+
+                updateActivityCount();
+
+
+                // ------------------------------------
+                // Highlight new activity
+                // ------------------------------------
+
+                card.classList.add(
+                    "border-primary"
+                );
+
+
+                setTimeout(
+                    () => {
+
+                        card.classList.remove(
+                            "border-primary"
+                        );
+
+                    },
+                    3000
+                );
+
+
+                showRealtimeStatus(
+                    "New activity received"
+                );
+
+            }
+        );
+
+    </script>
+
 
 </body>
 

@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -10,98 +12,1321 @@
         content="width=device-width, initial-scale=1.0"
     >
 
-    <title>Team Members | TeamFlow</title>
+    <title>
+        Team Members | TeamFlow
+    </title>
+
+
+   
 
     <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
         rel="stylesheet"
-        href="/css/style.css"
     >
+
+
+    <style>
+
+        .member-card {
+            transition:
+                transform 0.2s ease,
+                box-shadow 0.2s ease;
+        }
+
+
+        .member-card:hover {
+            transform: translateY(-2px);
+        }
+
+
+        .realtime-status {
+            display: none;
+        }
+
+
+        .member-role-badge {
+            min-width: 80px;
+        }
+
+    </style>
 
 </head>
 
-<body>
 
-    <div class="auth-container">
-
-        <div class="auth-card">
-
-            <h1>
-                <%= organization.name %>
-            </h1>
-
-            <h2>
-                Team Members
-            </h2>
+<body class="bg-light">
 
 
-            <% if (
-                user.role === "OWNER" ||
-                user.role === "ADMIN"
-            ) { %>
+    <!-- ==========================================
+         NAVBAR
+    =========================================== -->
 
-                <p>
+    <nav class="navbar navbar-dark bg-dark shadow-sm">
 
-                    <a href="/organizations/invite">
+        <div class="container">
+
+            <a
+                class="navbar-brand fw-bold"
+                href="/dashboard"
+            >
+                TeamFlow 🚀
+            </a>
+
+
+            <div class="d-flex gap-2">
+
+                <a
+                    href="/dashboard"
+                    class="btn btn-outline-light btn-sm"
+                >
+                    Dashboard
+                </a>
+
+
+                <a
+                    href="/organizations/activity"
+                    class="btn btn-outline-light btn-sm"
+                >
+                    Activity
+                </a>
+
+            </div>
+
+        </div>
+
+    </nav>
+
+
+    <!-- ==========================================
+         MAIN CONTENT
+    =========================================== -->
+
+    <main class="container py-5">
+
+
+        <!-- ========================================
+             PAGE HEADER
+        ========================================= -->
+
+        <div
+            class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4"
+        >
+
+            <div>
+
+                <h1 class="fw-bold mb-1">
+                    Team Members
+                </h1>
+
+
+                <p class="text-muted mb-0">
+
+                    Organization:
+
+                    <strong>
+                        <%= organization.name %>
+                    </strong>
+
+                </p>
+
+            </div>
+
+
+            <div class="d-flex gap-2">
+
+                <% if (
+                    user.role === "OWNER" ||
+                    user.role === "ADMIN"
+                ) { %>
+
+                    <a
+                        href="/organizations/invite"
+                        class="btn btn-primary"
+                    >
                         + Invite Member
                     </a>
 
-                </p>
+                <% } %>
 
-            <% } %>
+            </div>
+
+        </div>
 
 
-            <% if (members.length === 0) { %>
+        <!-- ========================================
+             REAL-TIME STATUS
+        ========================================= -->
 
-                <p>
-                    No members found.
-                </p>
+        <div
+            id="realtimeStatus"
+            class="alert alert-success d-none shadow-sm"
+            role="alert"
+        >
+            Real-time member updates enabled.
+        </div>
+
+
+        <!-- ========================================
+             MEMBER SUMMARY
+        ========================================= -->
+
+        <div class="card border-0 shadow-sm mb-4">
+
+            <div class="card-body">
+
+                <div
+                    class="d-flex justify-content-between align-items-center"
+                >
+
+                    <div>
+
+                        <div class="text-muted small">
+                            Total Members
+                        </div>
+
+                        <div
+                            id="memberCount"
+                            class="fs-3 fw-bold"
+                        >
+                            <%= members.length %>
+                        </div>
+
+                    </div>
+
+
+                    <div>
+
+                        <span
+                            id="liveBadge"
+                            class="badge text-bg-success"
+                        >
+                            ● Live
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ========================================
+             MEMBER LIST
+        ========================================= -->
+
+        <div
+            id="memberList"
+            class="row g-4"
+        >
+
+
+            <% if (
+                members.length === 0
+            ) { %>
+
+                <div
+                    id="emptyMembersMessage"
+                    class="col-12"
+                >
+
+                    <div class="card border-0 shadow-sm">
+
+                        <div class="card-body text-center py-5">
+
+                            <div class="fs-1 mb-3">
+                                👥
+                            </div>
+
+                            <h4 class="fw-bold">
+                                No members found
+                            </h4>
+
+                            <p class="text-muted mb-0">
+                                Invite your first team member to get started.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                </div>
 
             <% } %>
 
 
             <% members.forEach(member => { %>
 
+
                 <div
-                    style="
-                        border: 1px solid #ddd;
-                        padding: 15px;
-                        margin-top: 15px;
-                        border-radius: 8px;
-                    "
+                    class="col-md-6 col-xl-4 member-wrapper"
+                    id="member-wrapper-<%= member.id %>"
+                    data-member-id="<%= member.id %>"
+                    data-membership-id="<%= member.membership_id || '' %>"
                 >
 
-                    <h3>
-                        <%= member.name %>
-                    </h3>
 
-                    <p>
-                        Email:
-                        <%= member.email %>
-                    </p>
+                    <div
+                        class="card border-0 shadow-sm h-100 member-card"
+                    >
 
-                    <p>
-                        Role:
-                        <strong>
-                            <%= member.role %>
-                        </strong>
-                    </p>
+                        <div class="card-body">
+
+
+                            <!-- ==================================
+                                 MEMBER NAME
+                            =================================== -->
+
+                            <div
+                                class="d-flex justify-content-between align-items-start gap-2 mb-3"
+                            >
+
+                                <h4 class="fw-bold mb-0 member-name">
+
+                                    <%= member.name %>
+
+                                </h4>
+
+
+                                <span
+                                    class="badge member-role-badge
+                                    <%= member.role === 'OWNER'
+                                        ? 'text-bg-dark'
+                                        : member.role === 'ADMIN'
+                                            ? 'text-bg-primary'
+                                            : member.role === 'VIEWER'
+                                                ? 'text-bg-secondary'
+                                                : 'text-bg-success'
+                                    %> member-role"
+                                >
+
+                                    <%= member.role %>
+
+                                </span>
+
+                            </div>
+
+
+                            <!-- ==================================
+                                 EMAIL
+                            =================================== -->
+
+                            <p class="text-muted mb-3 member-email">
+
+                                <i class="bi bi-envelope"></i>
+
+                                <%= member.email %>
+
+                            </p>
+
+
+                            <!-- ==================================
+                                 MEMBER ID
+                            =================================== -->
+
+                            <div class="small text-muted mb-3">
+
+                                Member ID:
+
+                                <%= member.id %>
+
+                            </div>
+
+
+                            <!-- ==================================
+                                 MANAGEMENT CONTROLS
+                            =================================== -->
+
+                            <% if (
+                                (
+                                    user.role === "OWNER" ||
+                                    user.role === "ADMIN"
+                                ) &&
+                                member.role !== "OWNER" &&
+                                Number(member.id) !== Number(user.id)
+                            ) { %>
+
+
+                                <hr>
+
+
+                                <div
+                                    class="d-flex flex-column gap-2"
+                                >
+
+
+                                    <!-- ==================================
+                                         CHANGE ROLE
+                                    =================================== -->
+
+                                    <form
+                                        action="/organizations/members/<%= member.membership_id %>/role"
+                                        method="POST"
+                                        class="role-form"
+                                    >
+
+                                        <label
+                                            class="form-label small fw-semibold"
+                                        >
+                                            Change Role
+                                        </label>
+
+
+                                        <div class="input-group">
+
+                                            <select
+                                                name="role"
+                                                class="form-select"
+                                                required
+                                            >
+
+                                                <option
+                                                    value="ADMIN"
+                                                    <%= member.role === "ADMIN"
+                                                        ? "selected"
+                                                        : "" %>
+                                                >
+                                                    ADMIN
+                                                </option>
+
+
+                                                <option
+                                                    value="MEMBER"
+                                                    <%= member.role === "MEMBER"
+                                                        ? "selected"
+                                                        : "" %>
+                                                >
+                                                    MEMBER
+                                                </option>
+
+
+                                                <option
+                                                    value="VIEWER"
+                                                    <%= member.role === "VIEWER"
+                                                        ? "selected"
+                                                        : "" %>
+                                                >
+                                                    VIEWER
+                                                </option>
+
+                                            </select>
+
+
+                                            <button
+                                                type="submit"
+                                                class="btn btn-outline-primary"
+                                            >
+                                                Update
+                                            </button>
+
+                                        </div>
+
+                                    </form>
+
+
+                                    <!-- ==================================
+                                         REMOVE MEMBER
+                                    =================================== -->
+
+                                    <form
+                                        action="/organizations/members/<%= member.membership_id %>/remove"
+                                        method="POST"
+                                        onsubmit="return confirm('Are you sure you want to remove <%= member.name %> from this organization?');"
+                                    >
+
+                                        <button
+                                            type="submit"
+                                            class="btn btn-outline-danger w-100"
+                                        >
+                                            Remove Member
+                                        </button>
+
+                                    </form>
+
+                                </div>
+
+
+                            <% } else if (
+                                member.role === "OWNER"
+                            ) { %>
+
+
+                                <div class="mt-3">
+
+                                    <span class="badge text-bg-dark">
+                                        Organization Owner
+                                    </span>
+
+                                </div>
+
+
+                            <% } else if (
+                                Number(member.id) === Number(user.id)
+                            ) { %>
+
+
+                                <div class="mt-3">
+
+                                    <span class="badge text-bg-light border text-dark">
+                                        You
+                                    </span>
+
+                                </div>
+
+
+                            <% } %>
+
+
+                        </div>
+
+                    </div>
 
                 </div>
+
 
             <% }); %>
 
 
-            <p class="auth-footer">
+        </div>
 
-                <a href="/dashboard">
-                    ← Dashboard
-                </a>
 
-            </p>
+        <!-- ========================================
+             BACK TO DASHBOARD
+        ========================================= -->
+
+        <div class="mt-4">
+
+            <a
+                href="/dashboard"
+                class="btn btn-outline-primary"
+            >
+                ← Dashboard
+            </a>
 
         </div>
 
-    </div>
+
+    </main>
+
+
+    <!-- ==========================================
+         BOOTSTRAP JS
+    =========================================== -->
+
+    <script
+        src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+    ></script>
+
+
+    <!-- ==========================================
+         SOCKET.IO
+    =========================================== -->
+
+    <script
+        src="/socket.io/socket.io.js"
+    ></script>
+
+
+    <!-- ==========================================
+         SHARED TEAMFLOW SOCKET
+    =========================================== -->
+
+    <script
+        src="/js/notifications.js"
+    ></script>
+
+
+    <!-- ==========================================
+         REAL-TIME MEMBER MANAGEMENT
+    =========================================== -->
+
+    <script>
+
+        // ========================================
+        // Shared Socket
+        // ========================================
+
+        const socket =
+            window.teamFlowSocket;
+
+
+        // ========================================
+        // Current User
+        // ========================================
+
+        const currentUserId =
+            Number(
+                "<%= user.id %>"
+            );
+
+
+        const currentUserRole =
+            "<%= user.role %>";
+
+
+        // ========================================
+        // Elements
+        // ========================================
+
+        const memberList =
+            document.getElementById(
+                "memberList"
+            );
+
+
+        const memberCount =
+            document.getElementById(
+                "memberCount"
+            );
+
+
+        const realtimeStatus =
+            document.getElementById(
+                "realtimeStatus"
+            );
+
+
+        const liveBadge =
+            document.getElementById(
+                "liveBadge"
+            );
+
+
+        // ========================================
+        // Show status
+        // ========================================
+
+        function showRealtimeStatus(
+            message
+        ) {
+
+            if (!realtimeStatus) {
+
+                return;
+
+            }
+
+
+            realtimeStatus.textContent =
+                message;
+
+
+            realtimeStatus.classList.remove(
+                "d-none"
+            );
+
+
+            setTimeout(
+                () => {
+
+                    realtimeStatus.classList.add(
+                        "d-none"
+                    );
+
+                },
+                2500
+            );
+
+        }
+
+
+        // ========================================
+        // Escape HTML
+        // ========================================
+
+        function escapeHtml(
+            value
+        ) {
+
+            if (
+                value === null ||
+                value === undefined
+            ) {
+
+                return "";
+
+            }
+
+
+            const div =
+                document.createElement(
+                    "div"
+                );
+
+
+            div.textContent =
+                String(value);
+
+
+            return div.innerHTML;
+
+        }
+
+
+        // ========================================
+        // ROLE BADGE CLASS
+        // ========================================
+
+        function getRoleBadgeClass(
+            role
+        ) {
+
+            if (
+                role === "OWNER"
+            ) {
+
+                return "text-bg-dark";
+
+            }
+
+
+            if (
+                role === "ADMIN"
+            ) {
+
+                return "text-bg-primary";
+
+            }
+
+
+            if (
+                role === "VIEWER"
+            ) {
+
+                return "text-bg-secondary";
+
+            }
+
+
+            return "text-bg-success";
+
+        }
+
+
+        // ========================================
+        // UPDATE MEMBER COUNT
+        // ========================================
+
+        function updateMemberCount() {
+
+            if (!memberList || !memberCount) {
+
+                return;
+
+            }
+
+
+            const members =
+                memberList.querySelectorAll(
+                    ".member-wrapper"
+                );
+
+
+            memberCount.textContent =
+                members.length;
+
+        }
+
+
+        // ========================================
+        // REMOVE EMPTY MESSAGE
+        // ========================================
+
+        function removeEmptyMessage() {
+
+            const message =
+                document.getElementById(
+                    "emptyMembersMessage"
+                );
+
+
+            if (message) {
+
+                message.remove();
+
+            }
+
+        }
+
+
+        // ========================================
+        // SHOW EMPTY MESSAGE
+        // ========================================
+
+        function showEmptyMessage() {
+
+            const existing =
+                document.getElementById(
+                    "emptyMembersMessage"
+                );
+
+
+            if (existing) {
+
+                return;
+
+            }
+
+
+            const message =
+                document.createElement(
+                    "div"
+                );
+
+
+            message.id =
+                "emptyMembersMessage";
+
+
+            message.className =
+                "col-12";
+
+
+            message.innerHTML = `
+
+                <div class="card border-0 shadow-sm">
+
+                    <div class="card-body text-center py-5">
+
+                        <div class="fs-1 mb-3">
+                            👥
+                        </div>
+
+                        <h4 class="fw-bold">
+                            No members found
+                        </h4>
+
+                        <p class="text-muted mb-0">
+                            Invite your first team member to get started.
+                        </p>
+
+                    </div>
+
+                </div>
+
+            `;
+
+
+            memberList.appendChild(
+                message
+            );
+
+        }
+
+
+        // ========================================
+        // CAN MANAGE MEMBER
+        // Frontend only.
+        //
+        // Backend remains the real security check.
+        // ========================================
+
+        function canManageMember(
+            member
+        ) {
+
+            if (
+                currentUserRole !== "OWNER" &&
+                currentUserRole !== "ADMIN"
+            ) {
+
+                return false;
+
+            }
+
+
+            if (
+                Number(member.id) ===
+                currentUserId
+            ) {
+
+                return false;
+
+            }
+
+
+            if (
+                member.role === "OWNER"
+            ) {
+
+                return false;
+
+            }
+
+
+            if (
+                currentUserRole === "ADMIN" &&
+                member.role === "ADMIN"
+            ) {
+
+                return false;
+
+            }
+
+
+            return true;
+
+        }
+
+
+        // ========================================
+        // CREATE MEMBER CARD
+        // ========================================
+
+        function createMemberCard(
+            member
+        ) {
+
+            const wrapper =
+                document.createElement(
+                    "div"
+                );
+
+
+            wrapper.className =
+                "col-md-6 col-xl-4 member-wrapper";
+
+
+            wrapper.id =
+                `member-wrapper-${member.id}`;
+
+
+            wrapper.dataset.memberId =
+                member.id;
+
+
+            if (
+                member.membership_id
+            ) {
+
+                wrapper.dataset.membershipId =
+                    member.membership_id;
+
+            }
+
+
+            const canManage =
+                canManageMember(
+                    member
+                );
+
+
+            const roleControls =
+                canManage
+                    ?
+
+                    `
+
+                        <hr>
+
+                        <div class="d-flex flex-column gap-2">
+
+                            <form
+                                action="/organizations/members/${encodeURIComponent(member.membership_id)}/role"
+                                method="POST"
+                            >
+
+                                <label
+                                    class="form-label small fw-semibold"
+                                >
+                                    Change Role
+                                </label>
+
+                                <div class="input-group">
+
+                                    <select
+                                        name="role"
+                                        class="form-select"
+                                        required
+                                    >
+
+                                        <option
+                                            value="ADMIN"
+                                            ${member.role === "ADMIN" ? "selected" : ""}
+                                        >
+                                            ADMIN
+                                        </option>
+
+                                        <option
+                                            value="MEMBER"
+                                            ${member.role === "MEMBER" ? "selected" : ""}
+                                        >
+                                            MEMBER
+                                        </option>
+
+                                        <option
+                                            value="VIEWER"
+                                            ${member.role === "VIEWER" ? "selected" : ""}
+                                        >
+                                            VIEWER
+                                        </option>
+
+                                    </select>
+
+                                    <button
+                                        type="submit"
+                                        class="btn btn-outline-primary"
+                                    >
+                                        Update
+                                    </button>
+
+                                </div>
+
+                            </form>
+
+
+                            <form
+                                action="/organizations/members/${encodeURIComponent(member.membership_id)}/remove"
+                                method="POST"
+                                onsubmit="return confirm('Are you sure you want to remove ${escapeHtml(member.name)} from this organization?');"
+                            >
+
+                                <button
+                                    type="submit"
+                                    class="btn btn-outline-danger w-100"
+                                >
+                                    Remove Member
+                                </button>
+
+                            </form>
+
+                        </div>
+
+                    `
+
+                    :
+
+                    member.role === "OWNER"
+
+                    ?
+
+                    `
+                        <div class="mt-3">
+
+                            <span class="badge text-bg-dark">
+                                Organization Owner
+                            </span>
+
+                        </div>
+                    `
+
+                    :
+
+                    Number(member.id) === currentUserId
+
+                    ?
+
+                    `
+                        <div class="mt-3">
+
+                            <span class="badge text-bg-light border text-dark">
+                                You
+                            </span>
+
+                        </div>
+                    `
+
+                    :
+
+                    "";
+
+
+            wrapper.innerHTML = `
+
+                <div class="card border-0 shadow-sm h-100 member-card">
+
+                    <div class="card-body">
+
+                        <div
+                            class="d-flex justify-content-between align-items-start gap-2 mb-3"
+                        >
+
+                            <h4 class="fw-bold mb-0 member-name">
+
+                                ${escapeHtml(
+                                    member.name
+                                )}
+
+                            </h4>
+
+
+                            <span
+                                class="badge member-role-badge ${getRoleBadgeClass(member.role)} member-role"
+                            >
+
+                                ${escapeHtml(
+                                    member.role
+                                )}
+
+                            </span>
+
+                        </div>
+
+
+                        <p class="text-muted mb-3 member-email">
+
+                            ${escapeHtml(
+                                member.email
+                            )}
+
+                        </p>
+
+
+                        <div class="small text-muted">
+
+                            Member ID:
+
+                            ${escapeHtml(
+                                member.id
+                            )}
+
+                        </div>
+
+
+                        ${roleControls}
+
+                    </div>
+
+                </div>
+
+            `;
+
+
+            return wrapper;
+
+        }
+
+
+        // ========================================
+        // MEMBER ADDED
+        // ========================================
+
+        socket.on(
+            "member:added",
+
+            (member) => {
+
+                console.log(
+                    "⚡ MEMBER ADDED:",
+                    member
+                );
+
+
+                if (!member) {
+
+                    return;
+
+                }
+
+
+                const existing =
+                    document.getElementById(
+                        `member-wrapper-${member.id}`
+                    );
+
+
+                if (existing) {
+
+                    return;
+
+                }
+
+
+                removeEmptyMessage();
+
+
+                const card =
+                    createMemberCard(
+                        member
+                    );
+
+
+                memberList.appendChild(
+                    card
+                );
+
+
+                updateMemberCount();
+
+
+                showRealtimeStatus(
+                    "A new team member was added"
+                );
+
+            }
+        );
+
+
+        // ========================================
+        // MEMBER UPDATED
+        // ========================================
+
+        socket.on(
+            "member:updated",
+
+            (member) => {
+
+                console.log(
+                    "⚡ MEMBER UPDATED:",
+                    member
+                );
+
+
+                if (!member) {
+
+                    return;
+
+                }
+
+
+                const wrapper =
+                    document.getElementById(
+                        `member-wrapper-${member.id}`
+                    );
+
+
+                if (!wrapper) {
+
+                    const newCard =
+                        createMemberCard(
+                            member
+                        );
+
+
+                    removeEmptyMessage();
+
+
+                    memberList.appendChild(
+                        newCard
+                    );
+
+
+                    updateMemberCount();
+
+
+                    return;
+
+                }
+
+
+                // ==================================
+                // Update role badge
+                // ==================================
+
+                const roleBadge =
+                    wrapper.querySelector(
+                        ".member-role"
+                    );
+
+
+                if (roleBadge) {
+
+                    roleBadge.textContent =
+                        member.role;
+
+
+                    roleBadge.className =
+                        `badge member-role-badge ${getRoleBadgeClass(member.role)} member-role`;
+
+                }
+
+
+                // ==================================
+                // Update role controls
+                //
+                // Rebuild the card to ensure the
+                // controls match the new role.
+                // ==================================
+
+                const updatedCard =
+                    createMemberCard(
+                        member
+                    );
+
+
+                wrapper.replaceWith(
+                    updatedCard
+                );
+
+
+                showRealtimeStatus(
+                    "Member role updated in real-time"
+                );
+
+            }
+        );
+
+
+        // ========================================
+        // MEMBER REMOVED
+        // ========================================
+
+        socket.on(
+            "member:removed",
+
+            (member) => {
+
+                console.log(
+                    "⚡ MEMBER REMOVED:",
+                    member
+                );
+
+
+                if (!member) {
+
+                    return;
+
+                }
+
+
+                const memberId =
+                    member.id ||
+                    member.user_id;
+
+
+                const wrapper =
+                    document.getElementById(
+                        `member-wrapper-${memberId}`
+                    );
+
+
+                if (!wrapper) {
+
+                    return;
+
+                }
+
+
+                wrapper.remove();
+
+
+                updateMemberCount();
+
+
+                const remainingMembers =
+                    memberList.querySelectorAll(
+                        ".member-wrapper"
+                    );
+
+
+                if (
+                    remainingMembers.length === 0
+                ) {
+
+                    showEmptyMessage();
+
+                }
+
+
+                showRealtimeStatus(
+                    "A team member was removed"
+                );
+
+            }
+        );
+
+    </script>
+
 
 </body>
 
