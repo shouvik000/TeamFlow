@@ -1,17 +1,31 @@
 const express = require("express");
 
-const router =
-    express.Router();
+const router = express.Router();
 
 
-const organizationApiController =
-    require("../../controllers/organizationApiController");
+// ============================================
+// CONTROLLERS
+// ============================================
 
+const organizationController =
+    require("../../controllers/organizationController");
+
+const activityController =
+    require("../../controllers/activityController");
+
+
+// ============================================
+// AUTH MIDDLEWARE
+// ============================================
 
 const {
-    isApiAuthenticated
+    isAuthenticated
 } = require("../../middleware/authMiddleware");
 
+
+// ============================================
+// TENANT / RBAC MIDDLEWARE
+// ============================================
 
 const {
     loadOrganization,
@@ -19,77 +33,212 @@ const {
 } = require("../../middleware/tenantMiddleware");
 
 
+// ============================================
+// SUBSCRIPTION MIDDLEWARE
+// ============================================
+
 const {
     checkMemberLimit
 } = require("../../middleware/subscriptionMiddleware");
 
 
-const ROLES =
-    require("../../utils/roles");
-
-
 // ============================================
-// Get user's organizations
+// MEMBERS
 // ============================================
 
-router.get(
-    "/",
-
-    isApiAuthenticated,
-
-    organizationApiController.getMyOrganizations
-);
-
-
-// ============================================
-// Get current organization members
-// ============================================
+// --------------------------------------------
+// View organization members
+// --------------------------------------------
 
 router.get(
     "/members",
 
-    isApiAuthenticated,
+    isAuthenticated,
 
     loadOrganization,
 
-    organizationApiController.getMembers
+    organizationController.getMembers
 );
 
 
 // ============================================
-// Create invitation
-// OWNER / ADMIN
+// INVITATIONS
 // ============================================
 
-router.post(
+// --------------------------------------------
+// Show invite form
+// OWNER / ADMIN
+// --------------------------------------------
+
+router.get(
     "/invite",
 
-    isApiAuthenticated,
+    isAuthenticated,
 
     loadOrganization,
 
     requireRole(
-        ROLES.OWNER,
-        ROLES.ADMIN
+        "OWNER",
+        "ADMIN"
+    ),
+
+    organizationController.showInviteForm
+);
+
+
+// --------------------------------------------
+// Create invitation
+// OWNER / ADMIN
+// --------------------------------------------
+
+router.post(
+    "/invite",
+
+    isAuthenticated,
+
+    loadOrganization,
+
+    requireRole(
+        "OWNER",
+        "ADMIN"
     ),
 
     checkMemberLimit,
 
-    organizationApiController.createInvitation
+    organizationController.createInvitation
+);
+
+
+// --------------------------------------------
+// Accept invitation page
+// Public
+// --------------------------------------------
+
+router.get(
+    "/invite/accept",
+
+    organizationController.showAcceptInvitation
+);
+
+
+// --------------------------------------------
+// Accept invitation
+// Logged-in user
+// --------------------------------------------
+
+router.post(
+    "/invite/accept",
+
+    isAuthenticated,
+
+    organizationController.acceptInvitation
 );
 
 
 // ============================================
-// Switch active organization
+// MEMBER ROLE MANAGEMENT
 // ============================================
+
+// --------------------------------------------
+// Update member role
+//
+// OWNER / ADMIN only
+//
+// Expected body:
+// {
+//     role: "ADMIN" | "MEMBER" | "VIEWER"
+// }
+// --------------------------------------------
+
+router.post(
+    "/members/:memberId/role",
+
+    isAuthenticated,
+
+    loadOrganization,
+
+    requireRole(
+        "OWNER",
+        "ADMIN"
+    ),
+
+    organizationController.updateMemberRole
+);
+
+
+// ============================================
+// MEMBER REMOVAL
+// ============================================
+
+// --------------------------------------------
+// Remove member
+//
+// OWNER / ADMIN only
+// --------------------------------------------
+
+router.post(
+    "/members/:memberId/remove",
+
+    isAuthenticated,
+
+    loadOrganization,
+
+    requireRole(
+        "OWNER",
+        "ADMIN"
+    ),
+
+    organizationController.removeMember
+);
+
+
+// ============================================
+// ACTIVITY
+// ============================================
+
+router.get(
+    "/activity",
+
+    isAuthenticated,
+
+    loadOrganization,
+
+    activityController.getActivities
+);
+
+
+// ============================================
+// ORGANIZATION SWITCHING
+// ============================================
+
+// --------------------------------------------
+// Show user's organizations
+// --------------------------------------------
+
+router.get(
+    "/switch",
+
+    isAuthenticated,
+
+    organizationController.getMyOrganizations
+);
+
+
+// --------------------------------------------
+// Switch active organization
+// --------------------------------------------
 
 router.post(
     "/switch",
 
-    isApiAuthenticated,
+    isAuthenticated,
 
-    organizationApiController.switchOrganization
+    organizationController.switchOrganization
 );
 
+
+// ============================================
+// EXPORT ROUTER
+// ============================================
 
 module.exports = router;

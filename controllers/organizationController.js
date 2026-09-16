@@ -1,6 +1,5 @@
 const pool = require("../config/db");
 
-
 // ============================================
 // INVITATION SERVICE
 // ============================================
@@ -10,7 +9,6 @@ const {
     hashInvitationToken
 } = require("../services/invitationService");
 
-
 // ============================================
 // ACTIVITY SERVICE
 // ============================================
@@ -19,6 +17,13 @@ const {
     createActivityLog
 } = require("../services/activityService");
 
+// ============================================
+// NOTIFICATION SERVICE
+// ============================================
+
+const {
+    createNotification
+} = require("../services/notificationService");
 
 // ============================================
 // SOCKET.IO SERVICE
@@ -32,7 +37,7 @@ const {
 
 
 // ============================================
-// Show members
+// SHOW MEMBERS
 // ============================================
 
 exports.getMembers = async (req, res) => {
@@ -41,7 +46,6 @@ exports.getMembers = async (req, res) => {
 
         const organizationId =
             req.session.user.organizationId;
-
 
         const result =
             await pool.query(
@@ -68,12 +72,10 @@ exports.getMembers = async (req, res) => {
                 ]
             );
 
-
         res.render(
             "organizations/members",
             {
-                members:
-                    result.rows
+                members: result.rows
             }
         );
 
@@ -84,24 +86,18 @@ exports.getMembers = async (req, res) => {
             error
         );
 
-
         res.status(500).send(
             "Failed to load members"
         );
-
     }
-
 };
 
 
 // ============================================
-// Show invitation form
+// SHOW INVITATION FORM
 // ============================================
 
-exports.showInviteForm = (
-    req,
-    res
-) => {
+exports.showInviteForm = (req, res) => {
 
     res.render(
         "organizations/invite"
@@ -111,7 +107,7 @@ exports.showInviteForm = (
 
 
 // ============================================
-// Create invitation
+// CREATE INVITATION
 // ============================================
 
 exports.createInvitation = async (req, res) => {
@@ -120,7 +116,6 @@ exports.createInvitation = async (req, res) => {
         email,
         role
     } = req.body;
-
 
     try {
 
@@ -136,7 +131,6 @@ exports.createInvitation = async (req, res) => {
             return res.status(400).send(
                 "Email and role are required"
             );
-
         }
 
 
@@ -154,15 +148,12 @@ exports.createInvitation = async (req, res) => {
 
 
         if (
-            !allowedRoles.includes(
-                role
-            )
+            !allowedRoles.includes(role)
         ) {
 
             return res.status(400).send(
                 "Invalid role"
             );
-
         }
 
 
@@ -206,7 +197,6 @@ exports.createInvitation = async (req, res) => {
             return res.status(400).send(
                 "This user is already a member"
             );
-
         }
 
 
@@ -244,12 +234,11 @@ exports.createInvitation = async (req, res) => {
             return res.status(400).send(
                 "An active invitation already exists"
             );
-
         }
 
 
         // ========================================
-        // Generate invitation token
+        // Generate token
         // ========================================
 
         const token =
@@ -257,13 +246,11 @@ exports.createInvitation = async (req, res) => {
 
 
         const tokenHash =
-            hashInvitationToken(
-                token
-            );
+            hashInvitationToken(token);
 
 
         // ========================================
-        // Invitation expires in 24 hours
+        // 24 hour expiration
         // ========================================
 
         const expiresAt =
@@ -365,18 +352,15 @@ exports.createInvitation = async (req, res) => {
             error
         );
 
-
         res.status(500).send(
             "Failed to create invitation"
         );
-
     }
-
 };
 
 
 // ============================================
-// Show invitation acceptance page
+// SHOW ACCEPT INVITATION
 // ============================================
 
 exports.showAcceptInvitation = async (req, res) => {
@@ -391,16 +375,13 @@ exports.showAcceptInvitation = async (req, res) => {
         return res.status(400).send(
             "Invitation token is missing"
         );
-
     }
 
 
     try {
 
         const tokenHash =
-            hashInvitationToken(
-                token
-            );
+            hashInvitationToken(token);
 
 
         const result =
@@ -438,16 +419,13 @@ exports.showAcceptInvitation = async (req, res) => {
             return res.status(400).send(
                 "Invalid or expired invitation"
             );
-
         }
 
 
         res.render(
             "organizations/accept-invite",
             {
-                invitation:
-                    result.rows[0],
-
+                invitation: result.rows[0],
                 token
             }
         );
@@ -459,18 +437,15 @@ exports.showAcceptInvitation = async (req, res) => {
             error
         );
 
-
         res.status(500).send(
             "Failed to process invitation"
         );
-
     }
-
 };
 
 
 // ============================================
-// Accept invitation
+// ACCEPT INVITATION
 // ============================================
 
 exports.acceptInvitation = async (req, res) => {
@@ -485,7 +460,6 @@ exports.acceptInvitation = async (req, res) => {
         return res.status(400).send(
             "Invitation ID is required"
         );
-
     }
 
 
@@ -497,7 +471,6 @@ exports.acceptInvitation = async (req, res) => {
         return res.redirect(
             "/auth/login"
         );
-
     }
 
 
@@ -564,7 +537,6 @@ exports.acceptInvitation = async (req, res) => {
             return res.status(400).send(
                 "Invalid or expired invitation"
             );
-
         }
 
 
@@ -573,7 +545,7 @@ exports.acceptInvitation = async (req, res) => {
 
 
         // ========================================
-        // Verify invitation email
+        // Verify email
         // ========================================
 
         if (
@@ -589,12 +561,11 @@ exports.acceptInvitation = async (req, res) => {
             return res.status(403).send(
                 "This invitation belongs to a different email address"
             );
-
         }
 
 
         // ========================================
-        // Check existing membership
+        // Check membership
         // ========================================
 
         const memberResult =
@@ -624,11 +595,12 @@ exports.acceptInvitation = async (req, res) => {
 
         let member;
 
-        let memberWasAdded = false;
+        let memberWasAdded =
+            false;
 
 
         // ========================================
-        // Add member if not already a member
+        // Add member
         // ========================================
 
         if (
@@ -677,7 +649,6 @@ exports.acceptInvitation = async (req, res) => {
 
             member =
                 memberResult.rows[0];
-
         }
 
 
@@ -706,7 +677,7 @@ exports.acceptInvitation = async (req, res) => {
 
 
         // ========================================
-        // Get complete member information
+        // Get complete member
         // ========================================
 
         const completeMemberResult =
@@ -743,7 +714,7 @@ exports.acceptInvitation = async (req, res) => {
 
 
         // ========================================
-        // REAL-TIME MEMBER ADDED EVENT
+        // REAL-TIME MEMBER ADDED
         // ========================================
 
         if (
@@ -778,7 +749,6 @@ exports.acceptInvitation = async (req, res) => {
                     console.log(
                         `⚡ Real-time MEMBER_ADDED emitted: user=${completeMember.id} org=${invitation.organization_id}`
                     );
-
                 }
 
             } catch (socketError) {
@@ -787,15 +757,12 @@ exports.acceptInvitation = async (req, res) => {
                     "Real-time member event error:",
                     socketError
                 );
-
             }
-
         }
 
 
         // ========================================
-        // SWITCH CURRENT SESSION
-        // TO NEW ORGANIZATION
+        // UPDATE SESSION
         // ========================================
 
         req.session.user.organizationId =
@@ -809,10 +776,6 @@ exports.acceptInvitation = async (req, res) => {
         req.session.user.role =
             invitation.role;
 
-
-        // ========================================
-        // Save session
-        // ========================================
 
         req.session.save(
             (err) => {
@@ -828,14 +791,12 @@ exports.acceptInvitation = async (req, res) => {
                     return res.status(500).send(
                         "Could not save session"
                     );
-
                 }
 
 
                 res.redirect(
                     "/dashboard"
                 );
-
             }
         );
 
@@ -848,7 +809,6 @@ exports.acceptInvitation = async (req, res) => {
                 await client.query(
                     "ROLLBACK"
                 );
-
             }
 
         } catch (rollbackError) {
@@ -857,7 +817,6 @@ exports.acceptInvitation = async (req, res) => {
                 "Rollback error:",
                 rollbackError
             );
-
         }
 
 
@@ -876,16 +835,13 @@ exports.acceptInvitation = async (req, res) => {
         if (client) {
 
             client.release();
-
         }
-
     }
-
 };
 
 
 // ============================================
-// Update member role
+// UPDATE MEMBER ROLE
 // ============================================
 
 exports.updateMemberRole = async (req, res) => {
@@ -903,8 +859,10 @@ exports.updateMemberRole = async (req, res) => {
     const organizationId =
         req.session.user.organizationId;
 
+
     const currentUserId =
         req.session.user.id;
+
 
     const currentUserRole =
         req.session.user.role;
@@ -924,34 +882,61 @@ exports.updateMemberRole = async (req, res) => {
 
 
         if (
-            !allowedRoles.includes(
-                role
-            )
+            !allowedRoles.includes(role)
         ) {
 
             return res.status(400).send(
                 "Invalid member role"
             );
-
         }
 
 
         // ========================================
-        // Validate membership ID
+        // Validate member ID
         // ========================================
 
         if (
             !memberId ||
-            !/^\d+$/.test(
-                String(memberId)
-            )
+            !/^\d+$/.test(String(memberId))
         ) {
 
             return res.status(400).send(
                 "Invalid member ID"
             );
-
         }
+
+
+        console.log(
+            "\n========================================"
+        );
+
+        console.log(
+            "🔧 UPDATE MEMBER ROLE"
+        );
+
+        console.log(
+            "Membership ID:",
+            memberId
+        );
+
+        console.log(
+            "Organization ID:",
+            organizationId
+        );
+
+        console.log(
+            "Current User ID:",
+            currentUserId
+        );
+
+        console.log(
+            "Requested Role:",
+            role
+        );
+
+        console.log(
+            "========================================"
+        );
 
 
         // ========================================
@@ -994,7 +979,6 @@ exports.updateMemberRole = async (req, res) => {
             return res.status(404).send(
                 "Organization member not found"
             );
-
         }
 
 
@@ -1002,8 +986,14 @@ exports.updateMemberRole = async (req, res) => {
             memberResult.rows[0];
 
 
+        console.log(
+            "Target member found:",
+            member
+        );
+
+
         // ========================================
-        // Cannot change your own role
+        // Cannot change own role
         // ========================================
 
         if (
@@ -1014,7 +1004,6 @@ exports.updateMemberRole = async (req, res) => {
             return res.status(400).send(
                 "You cannot change your own organization role"
             );
-
         }
 
 
@@ -1029,12 +1018,11 @@ exports.updateMemberRole = async (req, res) => {
             return res.status(403).send(
                 "The organization owner cannot be modified"
             );
-
         }
 
 
         // ========================================
-        // ADMIN permissions
+        // ADMIN restrictions
         // ========================================
 
         if (
@@ -1045,7 +1033,6 @@ exports.updateMemberRole = async (req, res) => {
             return res.status(403).send(
                 "Administrators cannot change another administrator's role"
             );
-
         }
 
 
@@ -1090,12 +1077,17 @@ exports.updateMemberRole = async (req, res) => {
             return res.status(404).send(
                 "Member role could not be updated"
             );
-
         }
 
 
         const updatedMembership =
             updatedResult.rows[0];
+
+
+        console.log(
+            "✅ Member role updated:",
+            updatedMembership
+        );
 
 
         // ========================================
@@ -1120,7 +1112,6 @@ exports.updateMemberRole = async (req, res) => {
 
             description:
                 `Changed ${member.name}'s role from ${oldRole} to ${role}`
-
         });
 
 
@@ -1161,53 +1152,148 @@ exports.updateMemberRole = async (req, res) => {
             updatedMemberResult.rows[0];
 
 
-        // ========================================
-        // Real-time member update
-        // ========================================
-
-        try {
-
-            const io =
-                getIO();
-
-
-            if (
-                io &&
-                updatedMember
-            ) {
-
-                const organizationRoom =
-                    getOrganizationRoom(
-                        organizationId
-                    );
-
-
-                io.to(
-                    organizationRoom
-                ).emit(
-                    "member:updated",
-                    updatedMember
-                );
-
-
-                console.log(
-                    `⚡ Real-time MEMBER_UPDATED emitted: user=${updatedMember.id} org=${organizationId}`
-                );
-
-            }
-
-        } catch (socketError) {
+        if (!updatedMember) {
 
             console.error(
-                "Real-time member update error:",
-                socketError
+                "❌ Updated member could not be found after role update"
             );
 
+        } else {
+
+            console.log(
+                "✅ Complete updated member:",
+                updatedMember
+            );
         }
 
 
         // ========================================
-        // Update connected socket user role
+        // PERSONAL NOTIFICATION
+        // ========================================
+
+        console.log(
+            "\n🔔 ABOUT TO CREATE ROLE NOTIFICATION"
+        );
+
+        console.log(
+            "Target User ID:",
+            updatedMember?.id
+        );
+
+        console.log(
+            "Target User Name:",
+            updatedMember?.name
+        );
+
+        console.log(
+            "Organization ID:",
+            organizationId
+        );
+
+        console.log(
+            "Old Role:",
+            oldRole
+        );
+
+        console.log(
+            "New Role:",
+            role
+        );
+
+
+        if (!updatedMember) {
+
+            console.error(
+                "❌ Notification skipped because target member was not found"
+            );
+
+        } else {
+
+            try {
+
+                const notification =
+                    await createNotification({
+
+                        organizationId,
+
+                        userId:
+                            updatedMember.id,
+
+                        type:
+                            "MEMBER_ROLE_UPDATED",
+
+                        title:
+                            "Organization Role Updated",
+
+                        message:
+                            `Your role in the organization was changed from ${oldRole} to ${role}.`,
+
+                        entityType:
+                            "ORGANIZATION_MEMBER",
+
+                        entityId:
+                            updatedMembership.id
+                    });
+
+
+                console.log(
+                    "✅ Role notification result:",
+                    notification
+                );
+
+            } catch (notificationError) {
+
+                console.error(
+                    "❌ Role notification error:",
+                    notificationError
+                );
+            }
+        }
+
+
+        // ========================================
+// REAL-TIME MEMBER UPDATE
+// ========================================
+
+try {
+
+    const io =
+        getIO();
+
+    if (
+        io &&
+        updatedMember
+    ) {
+
+        const organizationRoom =
+            getOrganizationRoom(
+                organizationId
+            );
+
+        io.to(
+            organizationRoom
+        ).emit(
+            "member:updated",
+            updatedMember
+        );
+
+        console.log(
+            `⚡ Real-time MEMBER_UPDATED emitted: user=${updatedMember.id} org=${organizationId}`
+        );
+    }
+
+} catch (socketError) {
+
+    console.error(
+        "Real-time member update error:",
+        socketError
+    );
+
+}
+
+
+        // ========================================
+        // UPDATE CONNECTED SOCKET USER ROLE
         // ========================================
 
         try {
@@ -1229,9 +1315,9 @@ exports.updateMemberRole = async (req, res) => {
 
 
                 const targetSockets =
-                    await io.in(
-                        targetUserRoom
-                    ).fetchSockets();
+                    await io
+                        .in(targetUserRoom)
+                        .fetchSockets();
 
 
                 for (
@@ -1244,11 +1330,13 @@ exports.updateMemberRole = async (req, res) => {
 
                         targetSocket.user.role =
                             role;
-
                     }
-
                 }
 
+
+                console.log(
+                    `⚡ Socket role refreshed: user=${updatedMember.id} role=${role}`
+                );
             }
 
         } catch (socketError) {
@@ -1257,7 +1345,6 @@ exports.updateMemberRole = async (req, res) => {
                 "Socket role refresh error:",
                 socketError
             );
-
         }
 
 
@@ -1276,14 +1363,12 @@ exports.updateMemberRole = async (req, res) => {
         res.status(500).send(
             "Failed to update member role"
         );
-
     }
-
 };
 
 
 // ============================================
-// Remove member
+// REMOVE MEMBER
 // ============================================
 
 exports.removeMember = async (req, res) => {
@@ -1296,8 +1381,10 @@ exports.removeMember = async (req, res) => {
     const organizationId =
         req.session.user.organizationId;
 
+
     const currentUserId =
         req.session.user.id;
+
 
     const currentUserRole =
         req.session.user.role;
@@ -1311,16 +1398,41 @@ exports.removeMember = async (req, res) => {
 
         if (
             !memberId ||
-            !/^\d+$/.test(
-                String(memberId)
-            )
+            !/^\d+$/.test(String(memberId))
         ) {
 
             return res.status(400).send(
                 "Invalid member ID"
             );
-
         }
+
+
+        console.log(
+            "\n========================================"
+        );
+
+        console.log(
+            "🗑️ REMOVE MEMBER"
+        );
+
+        console.log(
+            "Membership ID:",
+            memberId
+        );
+
+        console.log(
+            "Organization ID:",
+            organizationId
+        );
+
+        console.log(
+            "Current User ID:",
+            currentUserId
+        );
+
+        console.log(
+            "========================================"
+        );
 
 
         // ========================================
@@ -1363,12 +1475,17 @@ exports.removeMember = async (req, res) => {
             return res.status(404).send(
                 "Organization member not found"
             );
-
         }
 
 
         const member =
             memberResult.rows[0];
+
+
+        console.log(
+            "Target member found:",
+            member
+        );
 
 
         // ========================================
@@ -1383,7 +1500,6 @@ exports.removeMember = async (req, res) => {
             return res.status(400).send(
                 "You cannot remove yourself from the organization"
             );
-
         }
 
 
@@ -1398,7 +1514,6 @@ exports.removeMember = async (req, res) => {
             return res.status(403).send(
                 "The organization owner cannot be removed"
             );
-
         }
 
 
@@ -1414,7 +1529,6 @@ exports.removeMember = async (req, res) => {
             return res.status(403).send(
                 "Administrators cannot remove another administrator"
             );
-
         }
 
 
@@ -1451,12 +1565,17 @@ exports.removeMember = async (req, res) => {
             return res.status(404).send(
                 "Member could not be removed"
             );
-
         }
 
 
         const removedMembership =
             deleteResult.rows[0];
+
+
+        console.log(
+            "✅ Member removed:",
+            removedMembership
+        );
 
 
         // ========================================
@@ -1481,12 +1600,76 @@ exports.removeMember = async (req, res) => {
 
             description:
                 `Removed ${member.name} from the organization`
-
         });
 
 
         // ========================================
-        // Real-time member removed event
+        // PERSONAL NOTIFICATION
+        // ========================================
+
+        console.log(
+            "\n🔔 ABOUT TO CREATE REMOVAL NOTIFICATION"
+        );
+
+        console.log(
+            "Target User ID:",
+            member.user_id
+        );
+
+        console.log(
+            "Target User Name:",
+            member.name
+        );
+
+        console.log(
+            "Organization ID:",
+            organizationId
+        );
+
+
+        try {
+
+            const notification =
+                await createNotification({
+
+                    organizationId,
+
+                    userId:
+                        member.user_id,
+
+                    type:
+                        "MEMBER_REMOVED",
+
+                    title:
+                        "Removed from Organization",
+
+                    message:
+                        "You were removed from the organization.",
+
+                    entityType:
+                        "ORGANIZATION_MEMBER",
+
+                    entityId:
+                        removedMembership.id
+                });
+
+
+            console.log(
+                "✅ Removal notification result:",
+                notification
+            );
+
+        } catch (notificationError) {
+
+            console.error(
+                "❌ Member removal notification error:",
+                notificationError
+            );
+        }
+
+
+        // ========================================
+        // REAL-TIME MEMBER REMOVED
         // ========================================
 
         try {
@@ -1529,22 +1712,19 @@ exports.removeMember = async (req, res) => {
                 console.log(
                     `⚡ Real-time MEMBER_REMOVED emitted: user=${member.user_id} org=${organizationId}`
                 );
-
             }
 
         } catch (socketError) {
 
             console.error(
-                "Real-time member removal error:",
+                "Real-time member removal event error:",
                 socketError
             );
-
         }
 
 
         // ========================================
-        // Remove target user from organization
-        // socket rooms
+        // REMOVE TARGET FROM SOCKET ROOMS
         // ========================================
 
         try {
@@ -1563,9 +1743,9 @@ exports.removeMember = async (req, res) => {
 
 
                 const targetSockets =
-                    await io.in(
-                        targetUserRoom
-                    ).fetchSockets();
+                    await io
+                        .in(targetUserRoom)
+                        .fetchSockets();
 
 
                 const organizationRoom =
@@ -1591,9 +1771,7 @@ exports.removeMember = async (req, res) => {
                     console.log(
                         `🔌 Removed user ${member.user_id} from organization socket rooms`
                     );
-
                 }
-
             }
 
         } catch (socketError) {
@@ -1602,7 +1780,6 @@ exports.removeMember = async (req, res) => {
                 "Socket member removal error:",
                 socketError
             );
-
         }
 
 
@@ -1621,14 +1798,12 @@ exports.removeMember = async (req, res) => {
         res.status(500).send(
             "Failed to remove member"
         );
-
     }
-
 };
 
 
 // ============================================
-// Get user's organizations
+// GET USER ORGANIZATIONS
 // ============================================
 
 exports.getMyOrganizations = async (req, res) => {
@@ -1681,14 +1856,12 @@ exports.getMyOrganizations = async (req, res) => {
         res.status(500).send(
             "Failed to load organizations"
         );
-
     }
-
 };
 
 
 // ============================================
-// Switch active organization
+// SWITCH ACTIVE ORGANIZATION
 // ============================================
 
 exports.switchOrganization = async (req, res) => {
@@ -1735,17 +1908,12 @@ exports.switchOrganization = async (req, res) => {
             return res.status(403).send(
                 "You are not a member of this organization"
             );
-
         }
 
 
         const organization =
             membershipResult.rows[0];
 
-
-        // ========================================
-        // Update active organization
-        // ========================================
 
         req.session.user.organizationId =
             organization.organization_id;
@@ -1758,10 +1926,6 @@ exports.switchOrganization = async (req, res) => {
         req.session.user.role =
             organization.role;
 
-
-        // ========================================
-        // Save session
-        // ========================================
 
         req.session.save(
             (err) => {
@@ -1777,14 +1941,12 @@ exports.switchOrganization = async (req, res) => {
                     return res.status(500).send(
                         "Failed to switch organization"
                     );
-
                 }
 
 
                 res.redirect(
                     "/dashboard"
                 );
-
             }
         );
 
@@ -1799,7 +1961,5 @@ exports.switchOrganization = async (req, res) => {
         res.status(500).send(
             "Failed to switch organization"
         );
-
     }
-
 };
