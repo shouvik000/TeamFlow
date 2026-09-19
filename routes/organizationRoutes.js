@@ -110,6 +110,48 @@ router.post(
 
 
 // --------------------------------------------
+// Resend invitation
+// OWNER / ADMIN
+// --------------------------------------------
+
+router.post(
+    "/invite/:invitationId/resend",
+
+    isAuthenticated,
+
+    loadOrganization,
+
+    requireRole(
+        "OWNER",
+        "ADMIN"
+    ),
+
+    organizationController.resendInvitation
+);
+
+
+// --------------------------------------------
+// Cancel invitation
+// OWNER / ADMIN
+// --------------------------------------------
+
+router.post(
+    "/invite/:invitationId/cancel",
+
+    isAuthenticated,
+
+    loadOrganization,
+
+    requireRole(
+        "OWNER",
+        "ADMIN"
+    ),
+
+    organizationController.cancelInvitation
+);
+
+
+// --------------------------------------------
 // Accept invitation page
 // Public
 // --------------------------------------------

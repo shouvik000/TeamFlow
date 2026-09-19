@@ -1,5 +1,6 @@
 const pool = require("../config/db");
 
+
 // ============================================
 // INVITATION SERVICE
 // ============================================
@@ -9,6 +10,7 @@ const {
     hashInvitationToken
 } = require("../services/invitationService");
 
+
 // ============================================
 // ACTIVITY SERVICE
 // ============================================
@@ -17,6 +19,7 @@ const {
     createActivityLog
 } = require("../services/activityService");
 
+
 // ============================================
 // NOTIFICATION SERVICE
 // ============================================
@@ -24,6 +27,16 @@ const {
 const {
     createNotification
 } = require("../services/notificationService");
+
+
+// ============================================
+// EMAIL SERVICE
+// ============================================
+
+const {
+    sendInvitationEmail
+} = require("../services/emailService");
+
 
 // ============================================
 // SOCKET.IO SERVICE
@@ -47,7 +60,12 @@ exports.getMembers = async (req, res) => {
         const organizationId =
             req.session.user.organizationId;
 
-        const result =
+
+        // ========================================
+        // Get organization members
+        // ========================================
+
+        const memberResult =
             await pool.query(
                 `
                 SELECT
@@ -72,12 +90,62 @@ exports.getMembers = async (req, res) => {
                 ]
             );
 
+
+        // ========================================
+        // Get pending invitations
+        // ========================================
+
+        const invitationResult =
+            await pool.query(
+                `
+                SELECT
+                    i.id,
+                    i.organization_id,
+                    i.email,
+                    i.role,
+                    i.expires_at,
+                    i.created_at,
+
+                    CASE
+                        WHEN i.expires_at <= NOW()
+                        THEN TRUE
+                        ELSE FALSE
+                    END AS is_expired,
+
+                    u.name AS created_by_name
+
+                FROM invitations i
+
+                LEFT JOIN users u
+                    ON u.id = i.created_by
+
+                WHERE i.organization_id = $1
+
+                  AND i.accepted_at IS NULL
+
+                ORDER BY i.created_at DESC
+                `,
+                [
+                    organizationId
+                ]
+            );
+
+
+        // ========================================
+        // Render members page
+        // ========================================
+
         res.render(
             "organizations/members",
             {
-                members: result.rows
+                members:
+                    memberResult.rows,
+
+                pendingInvitations:
+                    invitationResult.rows
             }
         );
+
 
     } catch (error) {
 
@@ -85,6 +153,7 @@ exports.getMembers = async (req, res) => {
             "Get members error:",
             error
         );
+
 
         res.status(500).send(
             "Failed to load members"
@@ -116,6 +185,7 @@ exports.createInvitation = async (req, res) => {
         email,
         role
     } = req.body;
+
 
     try {
 
@@ -160,8 +230,52 @@ exports.createInvitation = async (req, res) => {
         const organizationId =
             req.session.user.organizationId;
 
+
         const userId =
             req.session.user.id;
+
+
+        // ========================================
+        // Organization name
+        // ========================================
+
+        let organizationName =
+            req.organization?.name;
+
+
+        if (!organizationName) {
+
+            const organizationResult =
+                await pool.query(
+                    `
+                    SELECT
+                        name
+
+                    FROM organizations
+
+                    WHERE id = $1
+
+                    LIMIT 1
+                    `,
+                    [
+                        organizationId
+                    ]
+                );
+
+
+            if (
+                organizationResult.rows.length > 0
+            ) {
+
+                organizationName =
+                    organizationResult.rows[0].name;
+            }
+        }
+
+
+        organizationName =
+            organizationName ||
+            "TeamFlow Organization";
 
 
         // ========================================
@@ -201,7 +315,7 @@ exports.createInvitation = async (req, res) => {
 
 
         // ========================================
-        // Check existing pending invitation
+        // Check existing active invitation
         // ========================================
 
         const existingInvitation =
@@ -238,7 +352,7 @@ exports.createInvitation = async (req, res) => {
 
 
         // ========================================
-        // Generate token
+        // Generate invitation token
         // ========================================
 
         const token =
@@ -246,11 +360,13 @@ exports.createInvitation = async (req, res) => {
 
 
         const tokenHash =
-            hashInvitationToken(token);
+            hashInvitationToken(
+                token
+            );
 
 
         // ========================================
-        // 24 hour expiration
+        // Invitation expires in 24 hours
         // ========================================
 
         const expiresAt =
@@ -264,41 +380,49 @@ exports.createInvitation = async (req, res) => {
         // Insert invitation
         // ========================================
 
-        await pool.query(
-            `
-            INSERT INTO invitations
-            (
-                organization_id,
-                email,
-                role,
-                token_hash,
-                expires_at,
-                created_by
-            )
+        const invitationResult =
+            await pool.query(
+                `
+                INSERT INTO invitations
+                (
+                    organization_id,
+                    email,
+                    role,
+                    token_hash,
+                    expires_at,
+                    created_by
+                )
 
-            VALUES
-            (
-                $1,
-                $2,
-                $3,
-                $4,
-                $5,
-                $6
-            )
-            `,
-            [
-                organizationId,
-                normalizedEmail,
-                role,
-                tokenHash,
-                expiresAt,
-                userId
-            ]
-        );
+                VALUES
+                (
+                    $1,
+                    $2,
+                    $3,
+                    $4,
+                    $5,
+                    $6
+                )
+
+                RETURNING
+                    id
+                `,
+                [
+                    organizationId,
+                    normalizedEmail,
+                    role,
+                    tokenHash,
+                    expiresAt,
+                    userId
+                ]
+            );
+
+
+        const invitationId =
+            invitationResult.rows[0].id;
 
 
         // ========================================
-        // Development invitation URL
+        // Create invitation URL
         // ========================================
 
         const baseUrl =
@@ -311,16 +435,21 @@ exports.createInvitation = async (req, res) => {
 
 
         console.log(
-            "\n================================"
+            "\n========================================"
         );
 
         console.log(
-            "INVITATION CREATED"
+            "📨 INVITATION CREATED"
         );
 
         console.log(
-            "Email:",
+            "Recipient:",
             normalizedEmail
+        );
+
+        console.log(
+            "Organization:",
+            organizationName
         );
 
         console.log(
@@ -329,21 +458,122 @@ exports.createInvitation = async (req, res) => {
         );
 
         console.log(
-            "Invitation URL:"
-        );
-
-        console.log(
+            "Invitation URL:",
             invitationUrl
         );
 
         console.log(
-            "================================\n"
+            "========================================"
         );
 
+
+        // ========================================
+        // Send invitation email
+        // ========================================
+
+        try {
+
+            console.log(
+                "📧 Sending invitation email..."
+            );
+
+
+            await sendInvitationEmail({
+
+                to:
+                    normalizedEmail,
+
+                organizationName,
+
+                role,
+
+                invitationUrl
+            });
+
+
+            console.log(
+                "✅ Invitation email sent successfully"
+            );
+
+
+        } catch (emailError) {
+
+            console.error(
+                "❌ Invitation email failed:",
+                emailError
+            );
+
+
+            // ====================================
+            // Delete invitation when email fails
+            // ====================================
+
+            try {
+
+                await pool.query(
+                    `
+                    DELETE FROM invitations
+
+                    WHERE id = $1
+                    `,
+                    [
+                        invitationId
+                    ]
+                );
+
+
+                console.log(
+                    "🗑️ Failed invitation record removed"
+                );
+
+
+            } catch (deleteError) {
+
+                console.error(
+                    "❌ Failed to remove invitation:",
+                    deleteError
+                );
+            }
+
+
+            return res.status(500).send(
+                "Invitation was not sent. Please check your email configuration and try again."
+            );
+        }
+
+
+        // ========================================
+        // Activity log
+        // ========================================
+
+        await createActivityLog({
+
+            organizationId,
+
+            userId,
+
+            action:
+                "INVITATION_CREATED",
+
+            entityType:
+                "INVITATION",
+
+            entityId:
+                invitationId,
+
+            description:
+                `Invited ${normalizedEmail} as ${role}`
+        });
+
+
+        // ========================================
+        // Success
+        // ========================================
 
         res.redirect(
             "/organizations/members"
         );
+
 
     } catch (error) {
 
@@ -352,8 +582,434 @@ exports.createInvitation = async (req, res) => {
             error
         );
 
+
         res.status(500).send(
             "Failed to create invitation"
+        );
+    }
+};
+
+
+// ============================================
+// RESEND INVITATION
+// ============================================
+
+exports.resendInvitation = async (req, res) => {
+
+    const {
+        invitationId
+    } = req.params;
+
+
+    const organizationId =
+        req.session.user.organizationId;
+
+
+    const currentUserId =
+        req.session.user.id;
+
+
+    try {
+
+        // ========================================
+        // Validate invitation ID
+        // ========================================
+
+        if (
+            !invitationId ||
+            !/^\d+$/.test(
+                String(invitationId)
+            )
+        ) {
+
+            return res.status(400).send(
+                "Invalid invitation ID"
+            );
+        }
+
+
+        // ========================================
+        // Get existing invitation
+        // ========================================
+
+        const invitationResult =
+            await pool.query(
+                `
+                SELECT
+                    i.id,
+                    i.organization_id,
+                    i.email,
+                    i.role,
+                    i.token_hash,
+                    i.expires_at,
+                    o.name AS organization_name
+
+                FROM invitations i
+
+                JOIN organizations o
+                    ON o.id = i.organization_id
+
+                WHERE i.id = $1
+
+                  AND i.organization_id = $2
+
+                  AND i.accepted_at IS NULL
+
+                LIMIT 1
+                `,
+                [
+                    invitationId,
+                    organizationId
+                ]
+            );
+
+
+        if (
+            invitationResult.rows.length === 0
+        ) {
+
+            return res.status(404).send(
+                "Pending invitation not found"
+            );
+        }
+
+
+        const invitation =
+            invitationResult.rows[0];
+
+
+        // ========================================
+        // Save old values in case email fails
+        // ========================================
+
+        const oldTokenHash =
+            invitation.token_hash;
+
+
+        const oldExpiresAt =
+            invitation.expires_at;
+
+
+        // ========================================
+        // Generate new token
+        // ========================================
+
+        const token =
+            generateInvitationToken();
+
+
+        const tokenHash =
+            hashInvitationToken(
+                token
+            );
+
+
+        const newExpiresAt =
+            new Date(
+                Date.now() +
+                24 * 60 * 60 * 1000
+            );
+
+
+        // ========================================
+        // Update invitation
+        // ========================================
+
+        await pool.query(
+            `
+            UPDATE invitations
+
+            SET
+                token_hash = $1,
+                expires_at = $2
+
+            WHERE id = $3
+
+              AND organization_id = $4
+
+              AND accepted_at IS NULL
+            `,
+            [
+                tokenHash,
+                newExpiresAt,
+                invitation.id,
+                organizationId
+            ]
+        );
+
+
+        // ========================================
+        // Build new invitation URL
+        // ========================================
+
+        const baseUrl =
+            process.env.APP_URL ||
+            `http://localhost:${process.env.PORT || 3000}`;
+
+
+        const invitationUrl =
+            `${baseUrl}/organizations/invite/accept?token=${token}`;
+
+
+        // ========================================
+        // Send email
+        // ========================================
+
+        try {
+
+            console.log(
+                "📧 Resending invitation email..."
+            );
+
+
+            await sendInvitationEmail({
+
+                to:
+                    invitation.email,
+
+                organizationName:
+                    invitation.organization_name,
+
+                role:
+                    invitation.role,
+
+                invitationUrl
+            });
+
+
+            console.log(
+                "✅ Invitation resent successfully"
+            );
+
+
+        } catch (emailError) {
+
+            console.error(
+                "❌ Resend invitation email failed:",
+                emailError
+            );
+
+
+            // ====================================
+            // Restore previous invitation
+            // ====================================
+
+            try {
+
+                await pool.query(
+                    `
+                    UPDATE invitations
+
+                    SET
+                        token_hash = $1,
+                        expires_at = $2
+
+                    WHERE id = $3
+
+                      AND organization_id = $4
+
+                      AND accepted_at IS NULL
+                    `,
+                    [
+                        oldTokenHash,
+                        oldExpiresAt,
+                        invitation.id,
+                        organizationId
+                    ]
+                );
+
+
+                console.log(
+                    "↩️ Previous invitation token restored"
+                );
+
+
+            } catch (restoreError) {
+
+                console.error(
+                    "❌ Failed to restore previous invitation:",
+                    restoreError
+                );
+            }
+
+
+            return res.status(500).send(
+                "Invitation could not be resent. Please check your email configuration."
+            );
+        }
+
+
+        // ========================================
+        // Activity log
+        // ========================================
+
+        await createActivityLog({
+
+            organizationId,
+
+            userId:
+                currentUserId,
+
+            action:
+                "INVITATION_RESENT",
+
+            entityType:
+                "INVITATION",
+
+            entityId:
+                invitation.id,
+
+            description:
+                `Resent invitation to ${invitation.email}`
+        });
+
+
+        res.redirect(
+            "/organizations/members"
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Resend invitation error:",
+            error
+        );
+
+
+        res.status(500).send(
+            "Failed to resend invitation"
+        );
+    }
+};
+
+
+// ============================================
+// CANCEL INVITATION
+// ============================================
+
+exports.cancelInvitation = async (req, res) => {
+
+    const {
+        invitationId
+    } = req.params;
+
+
+    const organizationId =
+        req.session.user.organizationId;
+
+
+    const currentUserId =
+        req.session.user.id;
+
+
+    try {
+
+        // ========================================
+        // Validate invitation ID
+        // ========================================
+
+        if (
+            !invitationId ||
+            !/^\d+$/.test(
+                String(invitationId)
+            )
+        ) {
+
+            return res.status(400).send(
+                "Invalid invitation ID"
+            );
+        }
+
+
+        // ========================================
+        // Delete invitation
+        // ========================================
+
+        const deleteResult =
+            await pool.query(
+                `
+                DELETE FROM invitations
+
+                WHERE id = $1
+
+                  AND organization_id = $2
+
+                  AND accepted_at IS NULL
+
+                RETURNING
+                    id,
+                    email,
+                    role,
+                    organization_id
+                `,
+                [
+                    invitationId,
+                    organizationId
+                ]
+            );
+
+
+        if (
+            deleteResult.rows.length === 0
+        ) {
+
+            return res.status(404).send(
+                "Pending invitation not found"
+            );
+        }
+
+
+        const cancelledInvitation =
+            deleteResult.rows[0];
+
+
+        console.log(
+            "🗑️ Invitation cancelled:",
+            cancelledInvitation
+        );
+
+
+        // ========================================
+        // Activity log
+        // ========================================
+
+        await createActivityLog({
+
+            organizationId,
+
+            userId:
+                currentUserId,
+
+            action:
+                "INVITATION_CANCELLED",
+
+            entityType:
+                "INVITATION",
+
+            entityId:
+                cancelledInvitation.id,
+
+            description:
+                `Cancelled invitation for ${cancelledInvitation.email}`
+        });
+
+
+        res.redirect(
+            "/organizations/members"
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Cancel invitation error:",
+            error
+        );
+
+
+        res.status(500).send(
+            "Failed to cancel invitation"
         );
     }
 };
@@ -381,7 +1037,9 @@ exports.showAcceptInvitation = async (req, res) => {
     try {
 
         const tokenHash =
-            hashInvitationToken(token);
+            hashInvitationToken(
+                token
+            );
 
 
         const result =
@@ -425,10 +1083,13 @@ exports.showAcceptInvitation = async (req, res) => {
         res.render(
             "organizations/accept-invite",
             {
-                invitation: result.rows[0],
+                invitation:
+                    result.rows[0],
+
                 token
             }
         );
+
 
     } catch (error) {
 
@@ -436,6 +1097,7 @@ exports.showAcceptInvitation = async (req, res) => {
             "Show invitation error:",
             error
         );
+
 
         res.status(500).send(
             "Failed to process invitation"
@@ -545,7 +1207,7 @@ exports.acceptInvitation = async (req, res) => {
 
 
         // ========================================
-        // Verify email
+        // Verify invitation email
         // ========================================
 
         if (
@@ -565,7 +1227,7 @@ exports.acceptInvitation = async (req, res) => {
 
 
         // ========================================
-        // Check membership
+        // Check existing membership
         // ========================================
 
         const memberResult =
@@ -600,7 +1262,7 @@ exports.acceptInvitation = async (req, res) => {
 
 
         // ========================================
-        // Add member
+        // Add member if not already a member
         // ========================================
 
         if (
@@ -641,6 +1303,7 @@ exports.acceptInvitation = async (req, res) => {
 
             member =
                 insertedMemberResult.rows[0];
+
 
             memberWasAdded =
                 true;
@@ -762,7 +1425,7 @@ exports.acceptInvitation = async (req, res) => {
 
 
         // ========================================
-        // UPDATE SESSION
+        // SWITCH CURRENT SESSION
         // ========================================
 
         req.session.user.organizationId =
@@ -776,6 +1439,10 @@ exports.acceptInvitation = async (req, res) => {
         req.session.user.role =
             invitation.role;
 
+
+        // ========================================
+        // SAVE SESSION
+        // ========================================
 
         req.session.save(
             (err) => {
@@ -799,6 +1466,7 @@ exports.acceptInvitation = async (req, res) => {
                 );
             }
         );
+
 
     } catch (error) {
 
@@ -829,6 +1497,7 @@ exports.acceptInvitation = async (req, res) => {
         res.status(500).send(
             "Failed to accept invitation"
         );
+
 
     } finally {
 
@@ -897,46 +1566,15 @@ exports.updateMemberRole = async (req, res) => {
 
         if (
             !memberId ||
-            !/^\d+$/.test(String(memberId))
+            !/^\d+$/.test(
+                String(memberId)
+            )
         ) {
 
             return res.status(400).send(
                 "Invalid member ID"
             );
         }
-
-
-        console.log(
-            "\n========================================"
-        );
-
-        console.log(
-            "🔧 UPDATE MEMBER ROLE"
-        );
-
-        console.log(
-            "Membership ID:",
-            memberId
-        );
-
-        console.log(
-            "Organization ID:",
-            organizationId
-        );
-
-        console.log(
-            "Current User ID:",
-            currentUserId
-        );
-
-        console.log(
-            "Requested Role:",
-            role
-        );
-
-        console.log(
-            "========================================"
-        );
 
 
         // ========================================
@@ -984,12 +1622,6 @@ exports.updateMemberRole = async (req, res) => {
 
         const member =
             memberResult.rows[0];
-
-
-        console.log(
-            "Target member found:",
-            member
-        );
 
 
         // ========================================
@@ -1084,12 +1716,6 @@ exports.updateMemberRole = async (req, res) => {
             updatedResult.rows[0];
 
 
-        console.log(
-            "✅ Member role updated:",
-            updatedMembership
-        );
-
-
         // ========================================
         // Activity log
         // ========================================
@@ -1152,62 +1778,13 @@ exports.updateMemberRole = async (req, res) => {
             updatedMemberResult.rows[0];
 
 
-        if (!updatedMember) {
-
-            console.error(
-                "❌ Updated member could not be found after role update"
-            );
-
-        } else {
-
-            console.log(
-                "✅ Complete updated member:",
-                updatedMember
-            );
-        }
-
-
         // ========================================
         // PERSONAL NOTIFICATION
         // ========================================
 
-        console.log(
-            "\n🔔 ABOUT TO CREATE ROLE NOTIFICATION"
-        );
-
-        console.log(
-            "Target User ID:",
-            updatedMember?.id
-        );
-
-        console.log(
-            "Target User Name:",
-            updatedMember?.name
-        );
-
-        console.log(
-            "Organization ID:",
-            organizationId
-        );
-
-        console.log(
-            "Old Role:",
-            oldRole
-        );
-
-        console.log(
-            "New Role:",
-            role
-        );
-
-
-        if (!updatedMember) {
-
-            console.error(
-                "❌ Notification skipped because target member was not found"
-            );
-
-        } else {
+        if (
+            updatedMember
+        ) {
 
             try {
 
@@ -1241,6 +1818,7 @@ exports.updateMemberRole = async (req, res) => {
                     notification
                 );
 
+
             } catch (notificationError) {
 
                 console.error(
@@ -1252,44 +1830,46 @@ exports.updateMemberRole = async (req, res) => {
 
 
         // ========================================
-// REAL-TIME MEMBER UPDATE
-// ========================================
+        // REAL-TIME MEMBER UPDATE
+        // ========================================
 
-try {
+        try {
 
-    const io =
-        getIO();
+            const io =
+                getIO();
 
-    if (
-        io &&
-        updatedMember
-    ) {
 
-        const organizationRoom =
-            getOrganizationRoom(
-                organizationId
+            if (
+                io &&
+                updatedMember
+            ) {
+
+                const organizationRoom =
+                    getOrganizationRoom(
+                        organizationId
+                    );
+
+
+                io.to(
+                    organizationRoom
+                ).emit(
+                    "member:updated",
+                    updatedMember
+                );
+
+
+                console.log(
+                    `⚡ Real-time MEMBER_UPDATED emitted: user=${updatedMember.id} org=${organizationId}`
+                );
+            }
+
+        } catch (socketError) {
+
+            console.error(
+                "Real-time member update error:",
+                socketError
             );
-
-        io.to(
-            organizationRoom
-        ).emit(
-            "member:updated",
-            updatedMember
-        );
-
-        console.log(
-            `⚡ Real-time MEMBER_UPDATED emitted: user=${updatedMember.id} org=${organizationId}`
-        );
-    }
-
-} catch (socketError) {
-
-    console.error(
-        "Real-time member update error:",
-        socketError
-    );
-
-}
+        }
 
 
         // ========================================
@@ -1352,6 +1932,7 @@ try {
             "/organizations/members"
         );
 
+
     } catch (error) {
 
         console.error(
@@ -1398,41 +1979,15 @@ exports.removeMember = async (req, res) => {
 
         if (
             !memberId ||
-            !/^\d+$/.test(String(memberId))
+            !/^\d+$/.test(
+                String(memberId)
+            )
         ) {
 
             return res.status(400).send(
                 "Invalid member ID"
             );
         }
-
-
-        console.log(
-            "\n========================================"
-        );
-
-        console.log(
-            "🗑️ REMOVE MEMBER"
-        );
-
-        console.log(
-            "Membership ID:",
-            memberId
-        );
-
-        console.log(
-            "Organization ID:",
-            organizationId
-        );
-
-        console.log(
-            "Current User ID:",
-            currentUserId
-        );
-
-        console.log(
-            "========================================"
-        );
 
 
         // ========================================
@@ -1480,12 +2035,6 @@ exports.removeMember = async (req, res) => {
 
         const member =
             memberResult.rows[0];
-
-
-        console.log(
-            "Target member found:",
-            member
-        );
 
 
         // ========================================
@@ -1572,12 +2121,6 @@ exports.removeMember = async (req, res) => {
             deleteResult.rows[0];
 
 
-        console.log(
-            "✅ Member removed:",
-            removedMembership
-        );
-
-
         // ========================================
         // Activity log
         // ========================================
@@ -1606,26 +2149,6 @@ exports.removeMember = async (req, res) => {
         // ========================================
         // PERSONAL NOTIFICATION
         // ========================================
-
-        console.log(
-            "\n🔔 ABOUT TO CREATE REMOVAL NOTIFICATION"
-        );
-
-        console.log(
-            "Target User ID:",
-            member.user_id
-        );
-
-        console.log(
-            "Target User Name:",
-            member.name
-        );
-
-        console.log(
-            "Organization ID:",
-            organizationId
-        );
-
 
         try {
 
@@ -1658,6 +2181,7 @@ exports.removeMember = async (req, res) => {
                 "✅ Removal notification result:",
                 notification
             );
+
 
         } catch (notificationError) {
 
@@ -1787,6 +2311,7 @@ exports.removeMember = async (req, res) => {
             "/organizations/members"
         );
 
+
     } catch (error) {
 
         console.error(
@@ -1844,6 +2369,7 @@ exports.getMyOrganizations = async (req, res) => {
                     result.rows
             }
         );
+
 
     } catch (error) {
 
@@ -1915,6 +2441,10 @@ exports.switchOrganization = async (req, res) => {
             membershipResult.rows[0];
 
 
+        // ========================================
+        // Update active organization
+        // ========================================
+
         req.session.user.organizationId =
             organization.organization_id;
 
@@ -1926,6 +2456,10 @@ exports.switchOrganization = async (req, res) => {
         req.session.user.role =
             organization.role;
 
+
+        // ========================================
+        // Save session
+        // ========================================
 
         req.session.save(
             (err) => {
@@ -1949,6 +2483,7 @@ exports.switchOrganization = async (req, res) => {
                 );
             }
         );
+
 
     } catch (error) {
 
