@@ -62,7 +62,7 @@ exports.getMembers = async (req, res) => {
 
 
         // ========================================
-        // Get organization members
+        // GET MEMBERS
         // ========================================
 
         const memberResult =
@@ -92,7 +92,7 @@ exports.getMembers = async (req, res) => {
 
 
         // ========================================
-        // Get pending invitations
+        // GET INVITATIONS
         // ========================================
 
         const invitationResult =
@@ -107,9 +107,15 @@ exports.getMembers = async (req, res) => {
                     i.created_at,
 
                     CASE
-                        WHEN i.expires_at <= NOW()
-                        THEN TRUE
-                        ELSE FALSE
+                        WHEN i.expires_at > NOW()
+                        THEN 'ACTIVE'
+                        ELSE 'EXPIRED'
+                    END AS status,
+
+                    CASE
+                        WHEN i.expires_at > NOW()
+                        THEN FALSE
+                        ELSE TRUE
                     END AS is_expired,
 
                     u.name AS created_by_name
@@ -123,7 +129,14 @@ exports.getMembers = async (req, res) => {
 
                   AND i.accepted_at IS NULL
 
-                ORDER BY i.created_at DESC
+                ORDER BY
+                    CASE
+                        WHEN i.expires_at > NOW()
+                        THEN 0
+                        ELSE 1
+                    END,
+
+                    i.created_at DESC
                 `,
                 [
                     organizationId
@@ -132,17 +145,53 @@ exports.getMembers = async (req, res) => {
 
 
         // ========================================
-        // Render members page
+        // INVITATION COUNTS
+        // ========================================
+
+        let activeInvitationCount =
+            0;
+
+
+        let expiredInvitationCount =
+            0;
+
+
+        invitationResult.rows.forEach(
+            (invitation) => {
+
+                if (
+                    invitation.status === "ACTIVE"
+                ) {
+
+                    activeInvitationCount++;
+
+                } else {
+
+                    expiredInvitationCount++;
+                }
+
+            }
+        );
+
+
+        // ========================================
+        // RENDER PAGE
         // ========================================
 
         res.render(
             "organizations/members",
             {
+
                 members:
                     memberResult.rows,
 
                 pendingInvitations:
-                    invitationResult.rows
+                    invitationResult.rows,
+
+                activeInvitationCount,
+
+                expiredInvitationCount
+
             }
         );
 
@@ -166,7 +215,10 @@ exports.getMembers = async (req, res) => {
 // SHOW INVITATION FORM
 // ============================================
 
-exports.showInviteForm = (req, res) => {
+exports.showInviteForm = (
+    req,
+    res
+) => {
 
     res.render(
         "organizations/invite"
@@ -179,7 +231,10 @@ exports.showInviteForm = (req, res) => {
 // CREATE INVITATION
 // ============================================
 
-exports.createInvitation = async (req, res) => {
+exports.createInvitation = async (
+    req,
+    res
+) => {
 
     const {
         email,
@@ -190,7 +245,7 @@ exports.createInvitation = async (req, res) => {
     try {
 
         // ========================================
-        // Validate input
+        // VALIDATE INPUT
         // ========================================
 
         if (
@@ -218,7 +273,9 @@ exports.createInvitation = async (req, res) => {
 
 
         if (
-            !allowedRoles.includes(role)
+            !allowedRoles.includes(
+                role
+            )
         ) {
 
             return res.status(400).send(
@@ -236,7 +293,7 @@ exports.createInvitation = async (req, res) => {
 
 
         // ========================================
-        // Organization name
+        // GET ORGANIZATION NAME
         // ========================================
 
         let organizationName =
@@ -279,7 +336,7 @@ exports.createInvitation = async (req, res) => {
 
 
         // ========================================
-        // Check existing membership
+        // CHECK EXISTING MEMBER
         // ========================================
 
         const existingMember =
@@ -315,7 +372,7 @@ exports.createInvitation = async (req, res) => {
 
 
         // ========================================
-        // Check existing active invitation
+        // CHECK EXISTING ACTIVE INVITATION
         // ========================================
 
         const existingInvitation =
@@ -352,7 +409,7 @@ exports.createInvitation = async (req, res) => {
 
 
         // ========================================
-        // Generate invitation token
+        // GENERATE TOKEN
         // ========================================
 
         const token =
@@ -366,7 +423,7 @@ exports.createInvitation = async (req, res) => {
 
 
         // ========================================
-        // Invitation expires in 24 hours
+        // 24 HOUR EXPIRATION
         // ========================================
 
         const expiresAt =
@@ -377,7 +434,7 @@ exports.createInvitation = async (req, res) => {
 
 
         // ========================================
-        // Insert invitation
+        // INSERT INVITATION
         // ========================================
 
         const invitationResult =
@@ -422,7 +479,7 @@ exports.createInvitation = async (req, res) => {
 
 
         // ========================================
-        // Create invitation URL
+        // BUILD INVITATION URL
         // ========================================
 
         const baseUrl =
@@ -468,7 +525,7 @@ exports.createInvitation = async (req, res) => {
 
 
         // ========================================
-        // Send invitation email
+        // SEND EMAIL
         // ========================================
 
         try {
@@ -488,6 +545,7 @@ exports.createInvitation = async (req, res) => {
                 role,
 
                 invitationUrl
+
             });
 
 
@@ -505,7 +563,7 @@ exports.createInvitation = async (req, res) => {
 
 
             // ====================================
-            // Delete invitation when email fails
+            // DELETE FAILED INVITATION
             // ====================================
 
             try {
@@ -543,7 +601,7 @@ exports.createInvitation = async (req, res) => {
 
 
         // ========================================
-        // Activity log
+        // ACTIVITY LOG
         // ========================================
 
         await createActivityLog({
@@ -563,11 +621,12 @@ exports.createInvitation = async (req, res) => {
 
             description:
                 `Invited ${normalizedEmail} as ${role}`
+
         });
 
 
         // ========================================
-        // Success
+        // REDIRECT
         // ========================================
 
         res.redirect(
@@ -594,7 +653,10 @@ exports.createInvitation = async (req, res) => {
 // RESEND INVITATION
 // ============================================
 
-exports.resendInvitation = async (req, res) => {
+exports.resendInvitation = async (
+    req,
+    res
+) => {
 
     const {
         invitationId
@@ -612,7 +674,7 @@ exports.resendInvitation = async (req, res) => {
     try {
 
         // ========================================
-        // Validate invitation ID
+        // VALIDATE ID
         // ========================================
 
         if (
@@ -629,7 +691,7 @@ exports.resendInvitation = async (req, res) => {
 
 
         // ========================================
-        // Get existing invitation
+        // GET INVITATION
         // ========================================
 
         const invitationResult =
@@ -678,10 +740,6 @@ exports.resendInvitation = async (req, res) => {
             invitationResult.rows[0];
 
 
-        // ========================================
-        // Save old values in case email fails
-        // ========================================
-
         const oldTokenHash =
             invitation.token_hash;
 
@@ -691,7 +749,7 @@ exports.resendInvitation = async (req, res) => {
 
 
         // ========================================
-        // Generate new token
+        // GENERATE NEW TOKEN
         // ========================================
 
         const token =
@@ -712,7 +770,7 @@ exports.resendInvitation = async (req, res) => {
 
 
         // ========================================
-        // Update invitation
+        // UPDATE TOKEN + EXPIRATION
         // ========================================
 
         await pool.query(
@@ -739,7 +797,7 @@ exports.resendInvitation = async (req, res) => {
 
 
         // ========================================
-        // Build new invitation URL
+        // BUILD NEW URL
         // ========================================
 
         const baseUrl =
@@ -752,7 +810,7 @@ exports.resendInvitation = async (req, res) => {
 
 
         // ========================================
-        // Send email
+        // SEND EMAIL
         // ========================================
 
         try {
@@ -774,6 +832,7 @@ exports.resendInvitation = async (req, res) => {
                     invitation.role,
 
                 invitationUrl
+
             });
 
 
@@ -791,7 +850,7 @@ exports.resendInvitation = async (req, res) => {
 
 
             // ====================================
-            // Restore previous invitation
+            // RESTORE OLD TOKEN
             // ====================================
 
             try {
@@ -827,7 +886,7 @@ exports.resendInvitation = async (req, res) => {
             } catch (restoreError) {
 
                 console.error(
-                    "❌ Failed to restore previous invitation:",
+                    "❌ Failed to restore old invitation:",
                     restoreError
                 );
             }
@@ -840,7 +899,7 @@ exports.resendInvitation = async (req, res) => {
 
 
         // ========================================
-        // Activity log
+        // ACTIVITY LOG
         // ========================================
 
         await createActivityLog({
@@ -861,6 +920,7 @@ exports.resendInvitation = async (req, res) => {
 
             description:
                 `Resent invitation to ${invitation.email}`
+
         });
 
 
@@ -888,7 +948,10 @@ exports.resendInvitation = async (req, res) => {
 // CANCEL INVITATION
 // ============================================
 
-exports.cancelInvitation = async (req, res) => {
+exports.cancelInvitation = async (
+    req,
+    res
+) => {
 
     const {
         invitationId
@@ -906,7 +969,7 @@ exports.cancelInvitation = async (req, res) => {
     try {
 
         // ========================================
-        // Validate invitation ID
+        // VALIDATE ID
         // ========================================
 
         if (
@@ -923,7 +986,7 @@ exports.cancelInvitation = async (req, res) => {
 
 
         // ========================================
-        // Delete invitation
+        // DELETE INVITATION
         // ========================================
 
         const deleteResult =
@@ -971,7 +1034,7 @@ exports.cancelInvitation = async (req, res) => {
 
 
         // ========================================
-        // Activity log
+        // ACTIVITY LOG
         // ========================================
 
         await createActivityLog({
@@ -992,6 +1055,7 @@ exports.cancelInvitation = async (req, res) => {
 
             description:
                 `Cancelled invitation for ${cancelledInvitation.email}`
+
         });
 
 
@@ -1019,7 +1083,10 @@ exports.cancelInvitation = async (req, res) => {
 // SHOW ACCEPT INVITATION
 // ============================================
 
-exports.showAcceptInvitation = async (req, res) => {
+exports.showAcceptInvitation = async (
+    req,
+    res
+) => {
 
     const {
         token
@@ -1110,7 +1177,10 @@ exports.showAcceptInvitation = async (req, res) => {
 // ACCEPT INVITATION
 // ============================================
 
-exports.acceptInvitation = async (req, res) => {
+exports.acceptInvitation = async (
+    req,
+    res
+) => {
 
     const {
         invitationId
@@ -1155,7 +1225,7 @@ exports.acceptInvitation = async (req, res) => {
 
 
         // ========================================
-        // Find invitation
+        // FIND INVITATION
         // ========================================
 
         const invitationResult =
@@ -1207,7 +1277,7 @@ exports.acceptInvitation = async (req, res) => {
 
 
         // ========================================
-        // Verify invitation email
+        // VERIFY EMAIL
         // ========================================
 
         if (
@@ -1227,7 +1297,7 @@ exports.acceptInvitation = async (req, res) => {
 
 
         // ========================================
-        // Check existing membership
+        // CHECK EXISTING MEMBERSHIP
         // ========================================
 
         const memberResult =
@@ -1262,7 +1332,7 @@ exports.acceptInvitation = async (req, res) => {
 
 
         // ========================================
-        // Add member if not already a member
+        // INSERT MEMBER
         // ========================================
 
         if (
@@ -1312,11 +1382,12 @@ exports.acceptInvitation = async (req, res) => {
 
             member =
                 memberResult.rows[0];
+
         }
 
 
         // ========================================
-        // Mark invitation accepted
+        // MARK ACCEPTED
         // ========================================
 
         await client.query(
@@ -1340,7 +1411,7 @@ exports.acceptInvitation = async (req, res) => {
 
 
         // ========================================
-        // Get complete member
+        // GET COMPLETE MEMBER
         // ========================================
 
         const completeMemberResult =
@@ -1425,7 +1496,7 @@ exports.acceptInvitation = async (req, res) => {
 
 
         // ========================================
-        // SWITCH CURRENT SESSION
+        // SWITCH SESSION
         // ========================================
 
         req.session.user.organizationId =
@@ -1513,7 +1584,10 @@ exports.acceptInvitation = async (req, res) => {
 // UPDATE MEMBER ROLE
 // ============================================
 
-exports.updateMemberRole = async (req, res) => {
+exports.updateMemberRole = async (
+    req,
+    res
+) => {
 
     const {
         memberId
@@ -1540,7 +1614,7 @@ exports.updateMemberRole = async (req, res) => {
     try {
 
         // ========================================
-        // Validate role
+        // VALIDATE ROLE
         // ========================================
 
         const allowedRoles = [
@@ -1551,7 +1625,9 @@ exports.updateMemberRole = async (req, res) => {
 
 
         if (
-            !allowedRoles.includes(role)
+            !allowedRoles.includes(
+                role
+            )
         ) {
 
             return res.status(400).send(
@@ -1561,7 +1637,7 @@ exports.updateMemberRole = async (req, res) => {
 
 
         // ========================================
-        // Validate member ID
+        // VALIDATE MEMBER ID
         // ========================================
 
         if (
@@ -1578,7 +1654,7 @@ exports.updateMemberRole = async (req, res) => {
 
 
         // ========================================
-        // Get target member
+        // GET MEMBER
         // ========================================
 
         const memberResult =
@@ -1625,7 +1701,7 @@ exports.updateMemberRole = async (req, res) => {
 
 
         // ========================================
-        // Cannot change own role
+        // SELF ROLE CHANGE
         // ========================================
 
         if (
@@ -1640,7 +1716,7 @@ exports.updateMemberRole = async (req, res) => {
 
 
         // ========================================
-        // OWNER cannot be modified
+        // OWNER
         // ========================================
 
         if (
@@ -1654,7 +1730,7 @@ exports.updateMemberRole = async (req, res) => {
 
 
         // ========================================
-        // ADMIN restrictions
+        // ADMIN RESTRICTION
         // ========================================
 
         if (
@@ -1673,7 +1749,7 @@ exports.updateMemberRole = async (req, res) => {
 
 
         // ========================================
-        // Update role
+        // UPDATE ROLE
         // ========================================
 
         const updatedResult =
@@ -1717,7 +1793,7 @@ exports.updateMemberRole = async (req, res) => {
 
 
         // ========================================
-        // Activity log
+        // ACTIVITY
         // ========================================
 
         await createActivityLog({
@@ -1738,11 +1814,12 @@ exports.updateMemberRole = async (req, res) => {
 
             description:
                 `Changed ${member.name}'s role from ${oldRole} to ${role}`
+
         });
 
 
         // ========================================
-        // Get complete updated member
+        // GET UPDATED MEMBER
         // ========================================
 
         const updatedMemberResult =
@@ -1810,6 +1887,7 @@ exports.updateMemberRole = async (req, res) => {
 
                         entityId:
                             updatedMembership.id
+
                     });
 
 
@@ -1873,7 +1951,7 @@ exports.updateMemberRole = async (req, res) => {
 
 
         // ========================================
-        // UPDATE CONNECTED SOCKET USER ROLE
+        // REFRESH SOCKET ROLE
         // ========================================
 
         try {
@@ -1952,7 +2030,10 @@ exports.updateMemberRole = async (req, res) => {
 // REMOVE MEMBER
 // ============================================
 
-exports.removeMember = async (req, res) => {
+exports.removeMember = async (
+    req,
+    res
+) => {
 
     const {
         memberId
@@ -1974,7 +2055,7 @@ exports.removeMember = async (req, res) => {
     try {
 
         // ========================================
-        // Validate member ID
+        // VALIDATE MEMBER ID
         // ========================================
 
         if (
@@ -1991,7 +2072,7 @@ exports.removeMember = async (req, res) => {
 
 
         // ========================================
-        // Get target member
+        // GET MEMBER
         // ========================================
 
         const memberResult =
@@ -2038,7 +2119,7 @@ exports.removeMember = async (req, res) => {
 
 
         // ========================================
-        // Cannot remove yourself
+        // SELF REMOVAL
         // ========================================
 
         if (
@@ -2053,7 +2134,7 @@ exports.removeMember = async (req, res) => {
 
 
         // ========================================
-        // OWNER cannot be removed
+        // OWNER
         // ========================================
 
         if (
@@ -2067,7 +2148,7 @@ exports.removeMember = async (req, res) => {
 
 
         // ========================================
-        // ADMIN restrictions
+        // ADMIN RESTRICTION
         // ========================================
 
         if (
@@ -2082,7 +2163,7 @@ exports.removeMember = async (req, res) => {
 
 
         // ========================================
-        // Remove member
+        // DELETE MEMBERSHIP
         // ========================================
 
         const deleteResult =
@@ -2122,7 +2203,7 @@ exports.removeMember = async (req, res) => {
 
 
         // ========================================
-        // Activity log
+        // ACTIVITY
         // ========================================
 
         await createActivityLog({
@@ -2143,6 +2224,7 @@ exports.removeMember = async (req, res) => {
 
             description:
                 `Removed ${member.name} from the organization`
+
         });
 
 
@@ -2174,6 +2256,7 @@ exports.removeMember = async (req, res) => {
 
                     entityId:
                         removedMembership.id
+
                 });
 
 
@@ -2202,7 +2285,9 @@ exports.removeMember = async (req, res) => {
                 getIO();
 
 
-            if (io) {
+            if (
+                io
+            ) {
 
                 const organizationRoom =
                     getOrganizationRoom(
@@ -2215,6 +2300,7 @@ exports.removeMember = async (req, res) => {
                 ).emit(
                     "member:removed",
                     {
+
                         id:
                             member.user_id,
 
@@ -2229,6 +2315,7 @@ exports.removeMember = async (req, res) => {
 
                         role:
                             member.role
+
                     }
                 );
 
@@ -2237,6 +2324,7 @@ exports.removeMember = async (req, res) => {
                     `⚡ Real-time MEMBER_REMOVED emitted: user=${member.user_id} org=${organizationId}`
                 );
             }
+
 
         } catch (socketError) {
 
@@ -2257,7 +2345,9 @@ exports.removeMember = async (req, res) => {
                 getIO();
 
 
-            if (io) {
+            if (
+                io
+            ) {
 
                 const targetUserRoom =
                     getUserRoom(
@@ -2298,6 +2388,7 @@ exports.removeMember = async (req, res) => {
                 }
             }
 
+
         } catch (socketError) {
 
             console.error(
@@ -2331,7 +2422,10 @@ exports.removeMember = async (req, res) => {
 // GET USER ORGANIZATIONS
 // ============================================
 
-exports.getMyOrganizations = async (req, res) => {
+exports.getMyOrganizations = async (
+    req,
+    res
+) => {
 
     const userId =
         req.session.user.id;
@@ -2390,7 +2484,10 @@ exports.getMyOrganizations = async (req, res) => {
 // SWITCH ACTIVE ORGANIZATION
 // ============================================
 
-exports.switchOrganization = async (req, res) => {
+exports.switchOrganization = async (
+    req,
+    res
+) => {
 
     const {
         organizationId
@@ -2442,7 +2539,7 @@ exports.switchOrganization = async (req, res) => {
 
 
         // ========================================
-        // Update active organization
+        // UPDATE SESSION
         // ========================================
 
         req.session.user.organizationId =
@@ -2458,7 +2555,7 @@ exports.switchOrganization = async (req, res) => {
 
 
         // ========================================
-        // Save session
+        // SAVE SESSION
         // ========================================
 
         req.session.save(
