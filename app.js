@@ -1,5 +1,3 @@
-
-
 const express = require("express");
 const path = require("path");
 const http = require("http");
@@ -12,24 +10,25 @@ const { Server } = require("socket.io");
 require("dotenv").config();
 
 
-
+// ============================================================
 // DATABASE
+// ============================================================
+
+const pool =
+    require("./config/db");
 
 
-const pool = require("./config/db");
-
-
-
+// ============================================================
 // WEBHOOK
-
+// ============================================================
 
 const webhookController =
     require("./controllers/webhookController");
 
 
-
+// ============================================================
 // WEB ROUTES
-
+// ============================================================
 
 const authRoutes =
     require("./routes/authRoutes");
@@ -50,9 +49,9 @@ const notificationRoutes =
     require("./routes/notificationRoutes");
 
 
-
+// ============================================================
 // API ROUTES
-
+// ============================================================
 
 const projectApiRoutes =
     require("./routes/api/projectRoutes");
@@ -73,9 +72,9 @@ const activityApiRoutes =
     require("./routes/api/activityRoutes");
 
 
-
+// ============================================================
 // SWAGGER
-
+// ============================================================
 
 const swaggerUi =
     require("swagger-ui-express");
@@ -84,9 +83,9 @@ const swaggerDocument =
     require("./config/swagger");
 
 
-
+// ============================================================
 // API ERROR HANDLING
-
+// ============================================================
 
 const {
     apiNotFound,
@@ -94,9 +93,9 @@ const {
 } = require("./middleware/errorMiddleware");
 
 
-
+// ============================================================
 // SECURITY
-
+// ============================================================
 
 const {
     securityHeaders,
@@ -105,9 +104,9 @@ const {
 } = require("./middleware/securityMiddleware");
 
 
-
+// ============================================================
 // SOCKET.IO SERVICE
-
+// ============================================================
 
 const {
     setIO,
@@ -116,9 +115,9 @@ const {
 } = require("./services/socketService");
 
 
-
+// ============================================================
 // EXPRESS APP
-
+// ============================================================
 
 const app =
     express();
@@ -127,10 +126,9 @@ const PORT =
     process.env.PORT || 3000;
 
 
-
+// ============================================================
 // TRUST PROXY IN PRODUCTION
-// Useful when deployed behind Render/proxy
-
+// ============================================================
 
 if (
     process.env.NODE_ENV === "production"
@@ -140,22 +138,21 @@ if (
         "trust proxy",
         1
     );
-
 }
 
 
-
+// ============================================================
 // DISABLE X-POWERED-BY
-
+// ============================================================
 
 app.disable(
     "x-powered-by"
 );
 
 
-
+// ============================================================
 // EJS CONFIGURATION
-
+// ============================================================
 
 app.set(
     "view engine",
@@ -171,18 +168,268 @@ app.set(
 );
 
 
+// ============================================================
+// GLOBAL EJS HELPERS
+// ============================================================
+//
+// These helpers are available inside all EJS templates.
+//
+// Used by:
+// views/dashboard/activity.ejs
+// ============================================================
 
+
+// ------------------------------------------------------------
+// Format activity action
+// ------------------------------------------------------------
+
+app.locals.formatActionLabel =
+    function formatActionLabel(action) {
+
+        if (!action) {
+
+            return "Activity";
+        }
+
+
+        const labels = {
+
+            INVITATION_CREATED:
+                "Invitation Created",
+
+            INVITATION_RESENT:
+                "Invitation Resent",
+
+            INVITATION_CANCELLED:
+                "Invitation Cancelled",
+
+            MEMBER_ROLE_UPDATED:
+                "Member Role Updated",
+
+            MEMBER_REMOVED:
+                "Member Removed",
+
+            MEMBER_ADDED:
+                "Member Added",
+
+            PROJECT_CREATED:
+                "Project Created",
+
+            PROJECT_UPDATED:
+                "Project Updated",
+
+            PROJECT_DELETED:
+                "Project Deleted",
+
+            TASK_CREATED:
+                "Task Created",
+
+            TASK_UPDATED:
+                "Task Updated",
+
+            TASK_DELETED:
+                "Task Deleted"
+
+        };
+
+
+        if (
+            labels[action]
+        ) {
+
+            return labels[action];
+        }
+
+
+        return String(action)
+            .split("_")
+            .map(
+                (word) => {
+
+                    return (
+                        word.charAt(0).toUpperCase() +
+                        word.slice(1).toLowerCase()
+                    );
+
+                }
+            )
+            .join(" ");
+    };
+
+
+// ------------------------------------------------------------
+// Format activity entity type
+// ------------------------------------------------------------
+
+app.locals.formatEntityLabel =
+    function formatEntityLabel(entityType) {
+
+        if (!entityType) {
+
+            return "Activity";
+        }
+
+
+        const labels = {
+
+            INVITATION:
+                "Invitation",
+
+            ORGANIZATION_MEMBER:
+                "Organization Member",
+
+            PROJECT:
+                "Project",
+
+            TASK:
+                "Task",
+
+            ORGANIZATION:
+                "Organization"
+
+        };
+
+
+        if (
+            labels[entityType]
+        ) {
+
+            return labels[entityType];
+        }
+
+
+        return String(entityType)
+            .split("_")
+            .map(
+                (word) => {
+
+                    return (
+                        word.charAt(0).toUpperCase() +
+                        word.slice(1).toLowerCase()
+                    );
+
+                }
+            )
+            .join(" ");
+    };
+
+
+// ------------------------------------------------------------
+// Activity icon
+// ------------------------------------------------------------
+
+app.locals.getActivityIcon =
+    function getActivityIcon(action) {
+
+        const icons = {
+
+            INVITATION_CREATED:
+                "📨",
+
+            INVITATION_RESENT:
+                "📧",
+
+            INVITATION_CANCELLED:
+                "✉️",
+
+            MEMBER_ROLE_UPDATED:
+                "🔑",
+
+            MEMBER_REMOVED:
+                "🚫",
+
+            MEMBER_ADDED:
+                "👤",
+
+            PROJECT_CREATED:
+                "📁",
+
+            PROJECT_UPDATED:
+                "🛠️",
+
+            PROJECT_DELETED:
+                "🗑️",
+
+            TASK_CREATED:
+                "✅",
+
+            TASK_UPDATED:
+                "🔄",
+
+            TASK_DELETED:
+                "❌"
+
+        };
+
+
+        return (
+            icons[action] ||
+            "📋"
+        );
+    };
+
+
+// ------------------------------------------------------------
+// Build query string for pagination/filter links
+// ------------------------------------------------------------
+
+app.locals.buildQueryString =
+    function buildQueryString(params = {}) {
+
+        const query =
+            new URLSearchParams();
+
+
+        Object.entries(params)
+            .forEach(
+                ([key, value]) => {
+
+                    if (
+                        value === undefined ||
+                        value === null
+                    ) {
+
+                        return;
+                    }
+
+
+                    const stringValue =
+                        String(value);
+
+
+                    if (
+                        stringValue.trim() === ""
+                    ) {
+
+                        return;
+                    }
+
+
+                    query.set(
+                        key,
+                        stringValue
+                    );
+
+                }
+            );
+
+
+        return query.toString();
+    };
+
+
+// ============================================================
 // SECURITY HEADERS
-
+// ============================================================
 
 app.use(
     securityHeaders
 );
 
 
-
+// ============================================================
 // SWAGGER API DOCUMENTATION
-
+// ============================================================
 
 app.use(
     "/api-docs",
@@ -196,13 +443,14 @@ app.use(
 );
 
 
-
+// ============================================================
 // RAZORPAY WEBHOOK
+// ============================================================
 //
 // IMPORTANT:
 // Webhook must receive raw JSON body
 // BEFORE express.json()
-
+// ============================================================
 
 app.post(
     "/webhooks/razorpay",
@@ -215,9 +463,9 @@ app.post(
 );
 
 
-
+// ============================================================
 // GENERAL MIDDLEWARE
-
+// ============================================================
 
 app.use(
     express.urlencoded({
@@ -230,9 +478,9 @@ app.use(
 );
 
 
-
+// ============================================================
 // STATIC FILES
-
+// ============================================================
 
 app.use(
     express.static(
@@ -244,13 +492,14 @@ app.use(
 );
 
 
-
+// ============================================================
 // SESSION MIDDLEWARE
+// ============================================================
 //
 // IMPORTANT:
 // Keep this in a variable because
 // Socket.IO will reuse the same session.
-
+// ============================================================
 
 const sessionMiddleware =
     session({
@@ -291,18 +540,18 @@ const sessionMiddleware =
     });
 
 
-
+// ============================================================
 // APPLY SESSION TO EXPRESS
-
+// ============================================================
 
 app.use(
     sessionMiddleware
 );
 
 
-
+// ============================================================
 // GLOBAL USER
-
+// ============================================================
 
 app.use(
     (req, res, next) => {
@@ -319,9 +568,9 @@ app.use(
 );
 
 
-
+// ============================================================
 // AUTH ROUTES
-
+// ============================================================
 
 app.use(
     "/auth",
@@ -330,9 +579,9 @@ app.use(
 );
 
 
-
+// ============================================================
 // WEB ROUTES
-
+// ============================================================
 
 app.use(
     "/projects",
@@ -360,10 +609,9 @@ app.use(
 );
 
 
-
+// ============================================================
 // LEGACY REST API
-// Existing endpoints remain working
-
+// ============================================================
 
 app.use(
     "/api",
@@ -371,10 +619,10 @@ app.use(
 );
 
 
-
-// Projects
+// ============================================================
+// PROJECT API
 // /api/projects
-
+// ============================================================
 
 app.use(
     "/api/projects",
@@ -382,11 +630,13 @@ app.use(
 );
 
 
-
-// Tasks
+// ============================================================
+// TASK API
+// ============================================================
+//
 // /api/projects/:projectId/tasks
 // /api/tasks/:taskId
-
+// ============================================================
 
 app.use(
     "/api",
@@ -394,10 +644,10 @@ app.use(
 );
 
 
-
-// Organizations
+// ============================================================
+// ORGANIZATION API
 // /api/organizations
-
+// ============================================================
 
 app.use(
     "/api/organizations",
@@ -405,10 +655,10 @@ app.use(
 );
 
 
-
-// Notifications
+// ============================================================
+// NOTIFICATION API
 // /api/notifications
-
+// ============================================================
 
 app.use(
     "/api/notifications",
@@ -416,10 +666,10 @@ app.use(
 );
 
 
-
-// Billing
+// ============================================================
+// BILLING API
 // /api/billing
-
+// ============================================================
 
 app.use(
     "/api/billing",
@@ -427,10 +677,9 @@ app.use(
 );
 
 
-
+// ============================================================
 // VERSIONED REST API
-// Recommended endpoints
-
+// ============================================================
 
 app.use(
     "/api/v1",
@@ -438,10 +687,9 @@ app.use(
 );
 
 
-
-// Projects v1
-// /api/v1/projects
-
+// ============================================================
+// PROJECTS V1
+// ============================================================
 
 app.use(
     "/api/v1/projects",
@@ -449,11 +697,9 @@ app.use(
 );
 
 
-
-// Tasks v1
-// /api/v1/projects/:projectId/tasks
-// /api/v1/tasks/:taskId
-
+// ============================================================
+// TASKS V1
+// ============================================================
 
 app.use(
     "/api/v1",
@@ -461,10 +707,9 @@ app.use(
 );
 
 
-
-// Organizations v1
-// /api/v1/organizations
-
+// ============================================================
+// ORGANIZATIONS V1
+// ============================================================
 
 app.use(
     "/api/v1/organizations",
@@ -472,10 +717,9 @@ app.use(
 );
 
 
-
-// Notifications v1
-// /api/v1/notifications
-
+// ============================================================
+// NOTIFICATIONS V1
+// ============================================================
 
 app.use(
     "/api/v1/notifications",
@@ -483,10 +727,9 @@ app.use(
 );
 
 
-
-// Billing v1
-// /api/v1/billing
-
+// ============================================================
+// BILLING V1
+// ============================================================
 
 app.use(
     "/api/v1/billing",
@@ -494,10 +737,9 @@ app.use(
 );
 
 
-
-// Activity API v1
-// /api/v1/activity
-
+// ============================================================
+// ACTIVITY API V1
+// ============================================================
 
 app.use(
     "/api/v1/activity",
@@ -505,9 +747,9 @@ app.use(
 );
 
 
-
+// ============================================================
 // HOME ROUTE
-
+// ============================================================
 
 app.get(
     "/",
@@ -522,8 +764,8 @@ app.get(
             return res.redirect(
                 "/dashboard"
             );
-
         }
+
 
         res.redirect(
             "/auth/login"
@@ -533,9 +775,9 @@ app.get(
 );
 
 
-
+// ============================================================
 // DASHBOARD
-
+// ============================================================
 
 app.get(
     "/dashboard",
@@ -550,7 +792,6 @@ app.get(
             return res.redirect(
                 "/auth/login"
             );
-
         }
 
 
@@ -559,28 +800,35 @@ app.get(
             const user =
                 req.session.user;
 
+
             const organizationId =
                 user.organizationId;
 
 
-            
-            // Pending Invitations
-            
+            // ========================================
+            // PENDING INVITATIONS
+            // ========================================
 
             const invitationResult =
                 await pool.query(
                     `
                     SELECT
+
                         i.id,
+
                         i.email,
+
                         i.role,
+
                         i.expires_at,
+
                         o.name AS organization_name
 
                     FROM invitations i
 
                     JOIN organizations o
-                        ON o.id = i.organization_id
+                        ON o.id =
+                            i.organization_id
 
                     WHERE LOWER(i.email)
                           = LOWER($1)
@@ -598,9 +846,9 @@ app.get(
                 );
 
 
-            
-            // Project Count
-           
+            // ========================================
+            // PROJECT COUNT
+            // ========================================
 
             const projectResult =
                 await pool.query(
@@ -618,9 +866,9 @@ app.get(
                 );
 
 
-           
-            // Task Count
-            
+            // ========================================
+            // TASK COUNT
+            // ========================================
 
             const taskResult =
                 await pool.query(
@@ -638,9 +886,9 @@ app.get(
                 );
 
 
-            
-            // Completed Tasks
-           
+            // ========================================
+            // COMPLETED TASKS
+            // ========================================
 
             const completedResult =
                 await pool.query(
@@ -660,9 +908,9 @@ app.get(
                 );
 
 
-            
-            // Members
-            
+            // ========================================
+            // MEMBERS
+            // ========================================
 
             const memberResult =
                 await pool.query(
@@ -680,15 +928,17 @@ app.get(
                 );
 
 
-           
-            // Task Status Statistics
-           
+            // ========================================
+            // TASK STATUS STATISTICS
+            // ========================================
 
             const statusResult =
                 await pool.query(
                     `
                     SELECT
+
                         status,
+
                         COUNT(*)::INTEGER AS count
 
                     FROM tasks
@@ -722,9 +972,9 @@ app.get(
                 );
 
 
-            
-            // Render Dashboard
-          
+            // ========================================
+            // RENDER DASHBOARD
+            // ========================================
 
             res.render(
                 "dashboard/index",
@@ -757,12 +1007,14 @@ app.get(
                 }
             );
 
+
         } catch (error) {
 
             console.error(
                 "Dashboard error:",
                 error
             );
+
 
             res.status(500).send(
                 "Failed to load dashboard"
@@ -774,24 +1026,18 @@ app.get(
 );
 
 
-
+// ============================================================
 // DASHBOARD REAL-TIME STATS
-//
-// Used by:
-// views/dashboard/index.ejs
-//
-// Endpoint:
-// GET /dashboard/stats
-
+// ============================================================
 
 app.get(
     "/dashboard/stats",
 
     async (req, res) => {
 
-        
-        // Authentication check
-       
+        // ========================================
+        // AUTHENTICATION
+        // ========================================
 
         if (
             !req.session ||
@@ -817,9 +1063,10 @@ app.get(
                 req.session.user.organizationId;
 
 
-            
-            // Project Count
-           
+            // ========================================
+            // PROJECT COUNT
+            // ========================================
+
             const projectResult =
                 await pool.query(
                     `
@@ -836,9 +1083,9 @@ app.get(
                 );
 
 
-            
-            // Task Count
-           
+            // ========================================
+            // TASK COUNT
+            // ========================================
 
             const taskResult =
                 await pool.query(
@@ -856,9 +1103,10 @@ app.get(
                 );
 
 
-            
-            // Completed Task Count
-           
+            // ========================================
+            // COMPLETED TASK COUNT
+            // ========================================
+
             const completedResult =
                 await pool.query(
                     `
@@ -877,9 +1125,9 @@ app.get(
                 );
 
 
-            
-            // Member Count
-            
+            // ========================================
+            // MEMBER COUNT
+            // ========================================
 
             const memberResult =
                 await pool.query(
@@ -897,15 +1145,17 @@ app.get(
                 );
 
 
-            
-            // Task Status Statistics
-            
+            // ========================================
+            // TASK STATUS STATISTICS
+            // ========================================
 
             const statusResult =
                 await pool.query(
                     `
                     SELECT
+
                         status,
+
                         COUNT(*)::INTEGER AS count
 
                     FROM tasks
@@ -939,9 +1189,9 @@ app.get(
                 );
 
 
-            
-            // Send JSON response
-            
+            // ========================================
+            // RESPONSE
+            // ========================================
 
             res.json({
 
@@ -951,16 +1201,20 @@ app.get(
                 stats: {
 
                     projectCount:
-                        projectResult.rows[0].count,
+                        projectResult.rows[0]
+                            .count,
 
                     taskCount:
-                        taskResult.rows[0].count,
+                        taskResult.rows[0]
+                            .count,
 
                     completedCount:
-                        completedResult.rows[0].count,
+                        completedResult.rows[0]
+                            .count,
 
                     memberCount:
-                        memberResult.rows[0].count,
+                        memberResult.rows[0]
+                            .count,
 
                     taskStatuses:
                         statusResult.rows
@@ -968,6 +1222,7 @@ app.get(
                 }
 
             });
+
 
         } catch (error) {
 
@@ -993,9 +1248,9 @@ app.get(
 );
 
 
-
+// ============================================================
 // DATABASE TEST
-
+// ============================================================
 
 app.get(
     "/db-test",
@@ -1023,6 +1278,7 @@ app.get(
 
             });
 
+
         } catch (error) {
 
             console.error(
@@ -1047,9 +1303,9 @@ app.get(
 );
 
 
-
+// ============================================================
 // DATABASE INFO
-
+// ============================================================
 
 app.get(
     "/db-info",
@@ -1076,6 +1332,7 @@ app.get(
                 result.rows[0]
             );
 
+
         } catch (error) {
 
             console.error(
@@ -1097,18 +1354,18 @@ app.get(
 );
 
 
-
+// ============================================================
 // API 404 HANDLER
-
+// ============================================================
 
 app.use(
     apiNotFound
 );
 
 
-
+// ============================================================
 // NORMAL 404 HANDLER
-
+// ============================================================
 
 app.use(
     (req, res) => {
@@ -1121,55 +1378,65 @@ app.use(
 );
 
 
-
+// ============================================================
 // GLOBAL API ERROR HANDLER
-
+// ============================================================
 
 app.use(
     apiErrorHandler
 );
 
 
-
+// ============================================================
 // CREATE HTTP SERVER
+// ============================================================
 //
 // IMPORTANT:
 // DO NOT use app.listen()
-// because Socket.IO needs the HTTP server.
-
+// because Socket.IO uses this HTTP server.
+// ============================================================
 
 const server =
-    http.createServer(app);
+    http.createServer(
+        app
+    );
 
 
-
+// ============================================================
 // CREATE SOCKET.IO SERVER
-
+// ============================================================
 
 const io =
     new Server(
         server,
         {
+
             cors: {
-                origin: true,
-                credentials: true
+
+                origin:
+                    true,
+
+                credentials:
+                    true
+
             }
+
         }
     );
 
 
-
+// ============================================================
 // SHARE EXPRESS SESSION WITH SOCKET.IO
-
+// ============================================================
 
 io.engine.use(
     sessionMiddleware
 );
 
 
-
+// ============================================================
 // SOCKET.IO AUTHENTICATION
-
+// ============================================================
 
 io.use(
     (socket, next) => {
@@ -1180,9 +1447,9 @@ io.use(
                 socket.request.session;
 
 
-           
-            // User must be logged in
-            
+            // ========================================
+            // USER MUST BE LOGGED IN
+            // ========================================
 
             if (
                 !currentSession ||
@@ -1198,9 +1465,9 @@ io.use(
             }
 
 
-            
-            // Save user information
-            
+            // ========================================
+            // SAVE USER
+            // ========================================
 
             socket.user =
                 currentSession.user;
@@ -1208,12 +1475,14 @@ io.use(
 
             next();
 
+
         } catch (error) {
 
             console.error(
                 "Socket authentication error:",
                 error
             );
+
 
             next(
                 new Error(
@@ -1227,9 +1496,9 @@ io.use(
 );
 
 
-
+// ============================================================
 // SOCKET.IO CONNECTION
-
+// ============================================================
 
 io.on(
     "connection",
@@ -1240,9 +1509,9 @@ io.on(
             socket.user;
 
 
-        
-        // USER + ORGANIZATION ROOM
-        
+        // ========================================
+        // USER ROOM
+        // ========================================
 
         const userRoom =
             getUserRoom(
@@ -1251,39 +1520,38 @@ io.on(
             );
 
 
-        
+        // ========================================
         // ORGANIZATION ROOM
-        
+        // ========================================
 
-        const organizationRoom = 
+        const organizationRoom =
             getOrganizationRoom(
                 user.organizationId
             );
 
 
-        
+        // ========================================
         // JOIN USER ROOM
-        // Used for personal notifications
-        
+        // ========================================
 
         socket.join(
             userRoom
         );
 
 
-        
+        // ========================================
         // JOIN ORGANIZATION ROOM
-        // Used for task/project real-time events
-        
+        // ========================================
 
         socket.join(
             organizationRoom
         );
 
 
-       
+        // ========================================
         // LOG CONNECTION
-        
+        // ========================================
+
         console.log(
             `🔌 Socket connected: user=${user.id} org=${user.organizationId}`
         );
@@ -1299,14 +1567,16 @@ io.on(
         );
 
 
-        
-        // ORGANIZATION SWITCH EVENT
-        
+        // ========================================
+        // ORGANIZATION SWITCH
+        // ========================================
 
         socket.on(
             "organization:switch",
 
-            async (organizationId) => {
+            async (
+                organizationId
+            ) => {
 
                 try {
 
@@ -1324,19 +1594,20 @@ io.on(
                     ) {
 
                         return;
-
                     }
 
 
-                   
-                    // Verify membership
-                    
+                    // =================================
+                    // VERIFY MEMBERSHIP
+                    // =================================
 
                     const membershipResult =
                         await pool.query(
                             `
                             SELECT
+
                                 organization_id,
+
                                 role
 
                             FROM organization_members
@@ -1363,22 +1634,21 @@ io.on(
                         );
 
                         return;
-
                     }
 
 
-                    
-                    // Leave old organization room
-                   
+                    // =================================
+                    // LEAVE OLD ORGANIZATION
+                    // =================================
 
                     socket.leave(
                         organizationRoom
                     );
 
 
-                    // --------------------------------
-                    // Join new organization room
-                    // --------------------------------
+                    // =================================
+                    // NEW ORGANIZATION ROOM
+                    // =================================
 
                     const newOrganizationRoom =
                         getOrganizationRoom(
@@ -1395,6 +1665,7 @@ io.on(
                         `🔄 User ${user.id} switched socket organization room from ${organizationRoom} to ${newOrganizationRoom}`
                     );
 
+
                 } catch (error) {
 
                     console.error(
@@ -1408,9 +1679,9 @@ io.on(
         );
 
 
-        
+        // ========================================
         // DISCONNECT
-        
+        // ========================================
 
         socket.on(
             "disconnect",
@@ -1428,21 +1699,22 @@ io.on(
 );
 
 
-
+// ============================================================
 // CONNECT SOCKET.IO SERVICE
+// ============================================================
 //
 // notificationService.js and task/project
 // events use this shared Socket.IO instance.
-
+// ============================================================
 
 setIO(
     io
 );
 
 
-
+// ============================================================
 // START SERVER
-
+// ============================================================
 
 server.listen(
     PORT,
@@ -1453,20 +1725,24 @@ server.listen(
             `TeamFlow running at http://localhost:${PORT}`
         );
 
+
         console.log(
             `Swagger docs: http://localhost:${PORT}/api-docs`
         );
+
 
         console.log(
             `API v1: http://localhost:${PORT}/api/v1`
         );
 
-        console.log(
-            `Socket.IO real-time notifications enabled`
-        );
 
         console.log(
-            ` Real-time organization events enabled`
+            "Socket.IO real-time notifications enabled"
+        );
+
+
+        console.log(
+            "Real-time organization events enabled"
         );
 
     }
