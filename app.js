@@ -6,6 +6,7 @@ const session = require("express-session");
 const pgSession = require("connect-pg-simple")(session);
 
 const { Server } = require("socket.io");
+const socketService = require("./services/socketService");
 
 require("dotenv").config();
 
@@ -38,6 +39,10 @@ const projectRoutes =
 
 const organizationRoutes =
     require("./routes/organizationRoutes");
+
+
+const kanbanRoutes =
+    require("./routes/kanbanRoutes");    
 
 const taskRoutes =
     require("./routes/taskRoutes");
@@ -596,7 +601,16 @@ app.use(
 app.use(
     "/billing",
     subscriptionRoutes
+
+
 );
+
+
+app.use(
+    "/kanban",
+    kanbanRoutes
+);
+
 
 app.use(
     "/",
@@ -1406,23 +1420,100 @@ const server =
 // CREATE SOCKET.IO SERVER
 // ============================================================
 
-const io =
-    new Server(
-        server,
-        {
+// ============================================
+// Socket.IO Setup
+// ============================================
 
-            cors: {
+const io = new Server(server, {
+    cors: {
+        origin: true,
+        credentials: true
+    }
+});
 
-                origin:
-                    true,
+// Make Socket.IO available to services
+socketService.setIO(io);
 
-                credentials:
-                    true
+// ============================================
+// Socket Authentication + Rooms
+// ============================================
+
+io.on("connection", async (socket) => {
+
+    try {
+
+        // ----------------------------------------
+        // User joins after login
+        // ----------------------------------------
+
+        socket.on("join:user", async (data) => {
+
+            if (!data || !data.userId || !data.organizationId) {
+                return;
+            }
+
+            const userRoom =
+                socketService.getUserRoom(
+                    data.userId,
+                    data.organizationId
+                );
+
+            const organizationRoom =
+                socketService.getOrganizationRoom(
+                    data.organizationId
+                );
+
+            socket.join(userRoom);
+            socket.join(organizationRoom);
+
+            // ------------------------------------
+            // Join every project room
+            // ------------------------------------
+
+            const projects = await pool.query(
+                `
+                SELECT id
+                FROM projects
+                WHERE organization_id=$1
+                `,
+                [data.organizationId]
+            );
+
+            for (const project of projects.rows) {
+
+                socket.join(
+                    socketService.getProjectRoom(
+                        data.organizationId,
+                        project.id
+                    )
+                );
 
             }
 
-        }
-    );
+            console.log(
+                `Socket ${socket.id} joined organization ${data.organizationId}`
+            );
+
+        });
+
+        socket.on("disconnect", () => {
+
+            console.log(
+                `Socket disconnected: ${socket.id}`
+            );
+
+        });
+
+    } catch (error) {
+
+        console.error(
+            "Socket connection error:",
+            error
+        );
+
+    }
+
+});
 
 
 // ============================================================

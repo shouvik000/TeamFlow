@@ -1,0 +1,89 @@
+<%
+const priorityColor = {
+    LOW: "success",
+    MEDIUM: "secondary",
+    HIGH: "warning",
+    URGENT: "danger"
+}[task.priority] || "secondary";
+
+const initials = (
+    task.assignee_name || "U"
+)
+.split(" ")
+.map(name => name[0])
+.join("")
+.substring(0,2)
+.toUpperCase();
+%>
+
+<div
+    class="card mb-3 task-card border-0 shadow-sm"
+    draggable="true"
+    data-task-id="<%= task.id %>"
+>
+
+    <div class="card-body p-3">
+
+        <div class="d-flex justify-content-between align-items-start mb-2">
+
+            <h6 class="card-title fw-semibold mb-0">
+                <%= task.title %>
+            </h6>
+
+            <div class="task-actions">
+
+                <button
+                    type="button"
+                    class="btn btn-sm btn-light edit-task-btn"
+                    title="Edit Task"
+                >
+                    ✏️
+                </button>
+
+                <button
+                    type="button"
+                    class="btn btn-sm btn-light delete-task-btn"
+                    title="Delete Task"
+                >
+                    🗑️
+                </button>
+
+            </div>
+
+        </div>
+
+        <p class="card-text text-muted small mb-3">
+            <%= task.description || "No description" %>
+        </p>
+
+        <div class="d-flex justify-content-between align-items-center">
+
+            <div class="d-flex gap-2 align-items-center flex-wrap">
+
+                <span class="badge bg-<%= priorityColor %>">
+                    <%= task.priority %>
+                </span>
+
+                <% if(task.due_date){ %>
+
+                    <span class="badge bg-light text-dark border">
+                        📅
+                        <%= new Date(task.due_date).toLocaleDateString() %>
+                    </span>
+
+                <% } %>
+
+            </div>
+
+            <div
+                class="avatar-circle"
+                title="<%= task.assignee_name || 'Unassigned' %>"
+            >
+                <%= initials %>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>

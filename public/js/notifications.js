@@ -487,26 +487,47 @@ document.addEventListener(
         // SOCKET CONNECTED
         // ====================================================
 
-        teamFlowSocket.on(
-            "connect",
-            () => {
+        teamFlowSocket.on("connect", () => {
 
-                console.log(
-                    "🔌 TeamFlow Socket.IO connected:",
-                    teamFlowSocket.id
-                );
+    console.log(
+        "🔌 TeamFlow Socket.IO connected:",
+        teamFlowSocket.id
+    );
 
+    console.log(
+        "✅ TeamFlow real-time notification system ready"
+    );
 
-                console.log(
-                    "✅ TeamFlow real-time notification system ready"
-                );
+    // Refresh notification badge
+    loadUnreadNotifications();
 
+    // --------------------------------------------
+    // Join user + organization + project rooms
+    // --------------------------------------------
 
-                // Refresh badge after reconnect
-                loadUnreadNotifications();
+    if (
+        window.currentUser &&
+        window.currentOrganization
+    ) {
 
-            }
+        teamFlowSocket.emit("join:user", {
+
+            userId:
+                window.currentUser.id,
+
+            organizationId:
+                window.currentOrganization.id
+
+        });
+
+        console.log(
+            "Joined organization room:",
+            window.currentOrganization.id
         );
+
+    }
+
+});
 
 
         // ====================================================
@@ -575,6 +596,88 @@ document.addEventListener(
 
             }
         );
+
+
+
+
+        // ====================================================
+// KANBAN REAL-TIME EVENTS
+// ====================================================
+
+// --------------------------------------------
+// Task Created
+// --------------------------------------------
+
+teamFlowSocket.on(
+    "task:created",
+    (task) => {
+
+        console.log(
+            "📌 Task created:",
+            task.id
+        );
+
+        document.dispatchEvent(
+            new CustomEvent(
+                "teamflow:taskCreated",
+                {
+                    detail: task
+                }
+            )
+        );
+
+    }
+);
+
+// --------------------------------------------
+// Task Updated
+// --------------------------------------------
+
+teamFlowSocket.on(
+    "task:updated",
+    (task) => {
+
+        console.log(
+            "✏️ Task updated:",
+            task.id
+        );
+
+        document.dispatchEvent(
+            new CustomEvent(
+                "teamflow:taskUpdated",
+                {
+                    detail: task
+                }
+            )
+        );
+
+    }
+);
+
+// --------------------------------------------
+// Task Deleted
+// --------------------------------------------
+
+teamFlowSocket.on(
+    "task:deleted",
+    (task) => {
+
+        console.log(
+            "🗑️ Task deleted:",
+            task.id
+        );
+
+        document.dispatchEvent(
+            new CustomEvent(
+                "teamflow:taskDeleted",
+                {
+                    detail: task
+                }
+            )
+        );
+
+    }
+);
 
 
         // ====================================================

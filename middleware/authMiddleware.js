@@ -1,4 +1,4 @@
-
+const { authMiddleware } = require("../middleware/authMiddleware");
 // ============================================
 // Web Authentication
 // ============================================
