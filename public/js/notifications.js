@@ -487,7 +487,7 @@ document.addEventListener(
         // SOCKET CONNECTED
         // ====================================================
 
-        teamFlowSocket.on("connect", () => {
+       teamFlowSocket.on("connect", () => {
 
     console.log(
         "🔌 TeamFlow Socket.IO connected:",
@@ -498,8 +498,36 @@ document.addEventListener(
         "✅ TeamFlow real-time notification system ready"
     );
 
-    // Refresh notification badge
+    // ----------------------------------------
+    // Join current project room (Kanban pages)
+    // ----------------------------------------
+
+    const organizationId =
+        document.body.dataset.organizationId;
+
+    const projectId =
+        document.body.dataset.projectId;
+
+    if (organizationId && projectId) {
+
+        teamFlowSocket.emit(
+            "join:project",
+            {
+                organizationId: Number(organizationId),
+                projectId: Number(projectId)
+            }
+        );
+
+        console.log(
+            `📡 Joined project room: organization=${organizationId} project=${projectId}`
+        );
+
+    }
+
+    // Refresh notification badge after reconnect
     loadUnreadNotifications();
+
+});
 
     // --------------------------------------------
     // Join user + organization + project rooms

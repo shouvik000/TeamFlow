@@ -1587,207 +1587,212 @@ io.use(
 );
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // ============================================================
 // SOCKET.IO CONNECTION
 // ============================================================
 
-io.on(
-    "connection",
+io.on("connection", (socket) => {
 
-    (socket) => {
+    const user = socket.user;
 
-        const user =
-            socket.user;
+    // ----------------------------------------
+    // User Room
+    // ----------------------------------------
 
-
-        // ========================================
-        // USER ROOM
-        // ========================================
-
-        const userRoom =
-            getUserRoom(
-                user.id,
-                user.organizationId
-            );
-
-
-        // ========================================
-        // ORGANIZATION ROOM
-        // ========================================
-
-        const organizationRoom =
-            getOrganizationRoom(
-                user.organizationId
-            );
-
-
-        // ========================================
-        // JOIN USER ROOM
-        // ========================================
-
-        socket.join(
-            userRoom
+    const userRoom =
+        socketService.getUserRoom(
+            user.id,
+            user.organizationId
         );
 
+    socket.join(userRoom);
 
-        // ========================================
-        // JOIN ORGANIZATION ROOM
-        // ========================================
+    // ----------------------------------------
+    // Organization Room
+    // ----------------------------------------
 
-        socket.join(
-            organizationRoom
+    let currentOrganizationRoom =
+        socketService.getOrganizationRoom(
+            user.organizationId
         );
 
+    socket.join(currentOrganizationRoom);
 
-        // ========================================
-        // LOG CONNECTION
-        // ========================================
+    console.log(
+        `🔌 Socket connected: user=${user.id} org=${user.organizationId}`
+    );
 
-        console.log(
-            `🔌 Socket connected: user=${user.id} org=${user.organizationId}`
-        );
+    console.log(
+        `📡 Joined user room: ${userRoom}`
+    );
 
+    console.log(
+        `📡 Joined organization room: ${currentOrganizationRoom}`
+    );
 
-        console.log(
-            `📡 Joined user room: ${userRoom}`
-        );
+    // ----------------------------------------
+    // Join Project Room (Kanban)
+    // ----------------------------------------
 
+    socket.on(
+        "join:project",
+        ({ organizationId, projectId }) => {
 
-        console.log(
-            `📡 Joined organization room: ${organizationRoom}`
-        );
-
-
-        // ========================================
-        // ORGANIZATION SWITCH
-        // ========================================
-
-        socket.on(
-            "organization:switch",
-
-            async (
-                organizationId
-            ) => {
-
-                try {
-
-                    const requestedOrganizationId =
-                        Number(
-                            organizationId
-                        );
-
-
-                    if (
-                        !Number.isInteger(
-                            requestedOrganizationId
-                        ) ||
-                        requestedOrganizationId <= 0
-                    ) {
-
-                        return;
-                    }
-
-
-                    // =================================
-                    // VERIFY MEMBERSHIP
-                    // =================================
-
-                    const membershipResult =
-                        await pool.query(
-                            `
-                            SELECT
-
-                                organization_id,
-
-                                role
-
-                            FROM organization_members
-
-                            WHERE organization_id = $1
-
-                              AND user_id = $2
-
-                            LIMIT 1
-                            `,
-                            [
-                                requestedOrganizationId,
-                                user.id
-                            ]
-                        );
-
-
-                    if (
-                        membershipResult.rows.length === 0
-                    ) {
-
-                        console.log(
-                            `⚠️ User ${user.id} attempted unauthorized organization switch to ${requestedOrganizationId}`
-                        );
-
-                        return;
-                    }
-
-
-                    // =================================
-                    // LEAVE OLD ORGANIZATION
-                    // =================================
-
-                    socket.leave(
-                        organizationRoom
-                    );
-
-
-                    // =================================
-                    // NEW ORGANIZATION ROOM
-                    // =================================
-
-                    const newOrganizationRoom =
-                        getOrganizationRoom(
-                            requestedOrganizationId
-                        );
-
-
-                    socket.join(
-                        newOrganizationRoom
-                    );
-
-
-                    console.log(
-                        `🔄 User ${user.id} switched socket organization room from ${organizationRoom} to ${newOrganizationRoom}`
-                    );
-
-
-                } catch (error) {
-
-                    console.error(
-                        "Socket organization switch error:",
-                        error
-                    );
-
-                }
-
+            if (!organizationId || !projectId) {
+                return;
             }
-        );
 
+            if (
+                Number(organizationId) !==
+                Number(user.organizationId)
+            ) {
+                return;
+            }
 
-        // ========================================
-        // DISCONNECT
-        // ========================================
+            const projectRoom =
+                socketService.getProjectRoom(
+                    organizationId,
+                    projectId
+                );
 
-        socket.on(
-            "disconnect",
+            if (!socket.rooms.has(projectRoom)) {
 
-            (reason) => {
+                socket.join(projectRoom);
 
                 console.log(
-                    `🔌 Socket disconnected: user=${user.id} reason=${reason}`
+                    `📡 Socket ${socket.id} joined project room ${projectRoom}`
                 );
 
             }
-        );
 
-    }
-);
+        }
+    );
+
+    // ----------------------------------------
+    // Organization Switch
+    // ----------------------------------------
+
+    socket.on(
+        "organization:switch",
+        async (organizationId) => {
+
+            try {
+
+                const requestedOrganizationId =
+                    Number(organizationId);
+
+                if (
+                    !Number.isInteger(requestedOrganizationId) ||
+                    requestedOrganizationId <= 0
+                ) {
+                    return;
+                }
+
+                const membershipResult =
+                    await pool.query(
+                        `
+                        SELECT organization_id
+                        FROM organization_members
+                        WHERE organization_id=$1
+                          AND user_id=$2
+                        LIMIT 1
+                        `,
+                        [
+                            requestedOrganizationId,
+                            user.id
+                        ]
+                    );
+
+                if (
+                    membershipResult.rows.length === 0
+                ) {
+
+                    console.log(
+                        `⚠️ User ${user.id} attempted unauthorized organization switch`
+                    );
+
+                    return;
+                }
+
+                socket.leave(currentOrganizationRoom);
+
+                currentOrganizationRoom =
+                    socketService.getOrganizationRoom(
+                        requestedOrganizationId
+                    );
+
+                socket.join(currentOrganizationRoom);
+
+                console.log(
+                    `🔄 User ${user.id} switched to ${currentOrganizationRoom}`
+                );
+
+            } catch (error) {
+
+                console.error(
+                    "Socket organization switch error:",
+                    error
+                );
+
+            }
+
+        }
+    );
+
+    // ----------------------------------------
+    // Disconnect
+    // ----------------------------------------
+
+    socket.on(
+        "disconnect",
+        (reason) => {
+
+            console.log(
+                `🔌 Socket disconnected: user=${user.id} reason=${reason}`
+            );
+
+        }
+    );
+
+});
 
 
 // ============================================================
@@ -1801,6 +1806,60 @@ io.on(
 setIO(
     io
 );
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 // ============================================================

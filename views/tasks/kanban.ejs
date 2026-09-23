@@ -20,96 +20,176 @@
 
     <style>
 
-        body{
-            background:#f8f9fa;
-        }
+       body{
+    background:#f8f9fa;
+}
 
-        .board-column{
-            min-height:620px;
-            background:white;
-            border-radius:16px;
-            padding:16px;
-            border:1px solid #dee2e6;
-            transition:.2s;
-        }
+.board-container{
+    overflow-x:auto;
+    padding-bottom:10px;
+}
 
-        .board-column.drag-over{
-            background:#eef6ff;
-            border:2px dashed #0d6efd;
-        }
+.board-column{
+    min-height:620px;
+    background:white;
+    border-radius:18px;
+    padding:16px;
+    border:1px solid #dee2e6;
+    transition:.25s ease;
+    display:flex;
+    flex-direction:column;
+}
 
-        .task-card{
-            cursor:grab;
-            transition:
-                transform .18s ease,
-                box-shadow .18s ease,
-                border-color .18s ease;
-        }
+.board-column.drag-over{
+    background:#eef6ff;
+    border:2px dashed #0d6efd;
+    transform:scale(1.01);
+}
 
-        .task-card:hover{
-            transform:translateY(-4px);
-            box-shadow:0 10px 24px rgba(0,0,0,.12);
-            border-color:#0d6efd;
-        }
+.column-title{
+    position:sticky;
+    top:0;
+    z-index:5;
+    background:white;
+    padding-bottom:10px;
+    margin-bottom:12px;
+}
 
-        .task-card.dragging{
-            opacity:.45;
-            transform:rotate(2deg);
-        }
+.column-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
 
-        .column-title{
-            display:flex;
-            justify-content:space-between;
-            align-items:center;
-            margin-bottom:16px;
-        }
+.column-actions{
+    display:flex;
+    gap:8px;
+    align-items:center;
+}
 
-        .column-actions{
-            display:flex;
-            gap:8px;
-            align-items:center;
-        }
+.task-list{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+}
 
-        .task-count{
-            font-size:.85rem;
-        }
+.task-card{
+    cursor:grab;
+    transition:
+        transform .18s ease,
+        box-shadow .18s ease;
+}
 
-        .avatar-circle{
-            width:34px;
-            height:34px;
-            border-radius:50%;
-            background:#0d6efd;
-            color:white;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            font-size:12px;
-            font-weight:700;
-            flex-shrink:0;
-        }
+.task-card:hover{
+    transform:translateY(-3px);
+    box-shadow:0 10px 24px rgba(0,0,0,.12);
+}
 
-        .task-actions{
-            display:flex;
-            gap:4px;
-            opacity:0;
-            transition:opacity .15s ease;
-        }
+.task-card.dragging{
+    opacity:.45;
+    transform:rotate(3deg);
+}
 
-        .task-card:hover .task-actions{
-            opacity:1;
-        }
+.task-count{
+    font-size:.85rem;
+}
 
-        .task-actions .btn{
-            padding:.15rem .35rem;
-            line-height:1;
-        }
+.avatar-circle{
+    width:34px;
+    height:34px;
+    border-radius:50%;
+    background:#0d6efd;
+    color:white;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:12px;
+    font-weight:700;
+    flex-shrink:0;
+}
+
+.task-actions{
+    display:flex;
+    gap:4px;
+    opacity:0;
+    transition:opacity .15s ease;
+}
+
+.task-card:hover .task-actions{
+    opacity:1;
+}
+
+.task-actions .btn{
+    padding:.15rem .35rem;
+    line-height:1;
+}
+
+.column-progress{
+    height:6px;
+    border-radius:999px;
+    background:#e9ecef;
+    overflow:hidden;
+    margin-top:10px;
+}
+
+.column-progress-fill{
+    height:100%;
+    width:0%;
+    transition:.35s ease;
+}
+
+.progress-todo{
+    background:#6c757d;
+}
+
+.progress-progress{
+    background:#0d6efd;
+}
+
+.progress-review{
+    background:#ffc107;
+}
+
+.progress-done{
+    background:#198754;
+}
+
+.empty-column{
+    text-align:center;
+    color:#6c757d;
+    padding:40px 10px;
+    display:none;
+}
+
+.empty-column .icon{
+    font-size:2rem;
+    display:block;
+    margin-bottom:10px;
+}
+
+@media (max-width:992px){
+
+    .board-row{
+        flex-wrap:nowrap;
+        overflow-x:auto;
+    }
+
+    .board-row>.col-lg-3{
+        min-width:320px;
+    }
+
+}
 
     </style>
 
 </head>
 
 
-<body>
+<body
+ data-organization-id="<%= organization.id %>"
+    data-project-id="<%= project.id %>"
+>
 
 
 <!-- ============================================
@@ -167,7 +247,159 @@
             ← Task List
         </a>
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- ===========================================
+KANBAN TOOLBAR
+=========================================== -->
+
+<div class="card border-0 shadow-sm mb-4">
+
+    <div class="card-body">
+
+        <div class="row g-3 align-items-center">
+
+            <div class="col-lg-4">
+
+                <label class="form-label mb-1">Search</label>
+
+                <input
+                    id="kanbanSearch"
+                    class="form-control"
+                    placeholder="Search title or description..."
+                >
+
+            </div>
+
+            <div class="col-lg-3">
+
+                <label class="form-label mb-1">Priority</label>
+
+                <select
+                    id="priorityFilter"
+                    class="form-select"
+                >
+
+                    <option value="">All Priorities</option>
+                    <option value="LOW">LOW</option>
+                    <option value="MEDIUM">MEDIUM</option>
+                    <option value="HIGH">HIGH</option>
+                    <option value="URGENT">URGENT</option>
+
+                </select>
+
+            </div>
+
+            <div class="col-lg-3">
+
+                <label class="form-label mb-1">Assignee</label>
+
+                <select
+                    id="assigneeFilter"
+                    class="form-select"
+                >
+
+                    <option value="">All Assignees</option>
+
+                    <% members.forEach(member=>{ %>
+
+                        <option value="<%= member.name %>">
+                            <%= member.name %>
+                        </option>
+
+                    <% }) %>
+
+                </select>
+
+            </div>
+
+            <div class="col-lg-2">
+
+                <label class="form-label mb-1">Sort</label>
+
+                <select
+                    id="sortTasks"
+                    class="form-select"
+                >
+
+                    <option value="newest">Newest</option>
+                    <option value="oldest">Oldest</option>
+                    <option value="due">Due Date</option>
+
+                </select>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     <!-- ============================================
@@ -190,23 +422,33 @@
 
                 <div class="column-title">
 
-                    <h5 class="mb-0">
-                        TODO
-                    </h5>
+                    <div class="column-header">
 
-                    <div class="column-actions">
+                        <h5 class="mb-0">TODO</h5>
 
-                        <span class="badge bg-secondary task-count">
-                            <%= todoTasks.length %>
-                        </span>
+                        <div class="column-actions">
 
-                        <button
-                            class="btn btn-sm btn-outline-primary add-task-btn"
-                            data-status="TODO"
-                            type="button"
-                        >
-                            +
-                        </button>
+                            <span class="badge bg-secondary task-count">
+                                <%= todoTasks.length %>
+                            </span>
+
+                            <button
+                                class="btn btn-sm btn-outline-primary add-task-btn"
+                                data-status="TODO"
+                                type="button"
+                            >
+                                +
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                    <div class="column-progress">
+
+                        <div
+                            class="column-progress-fill progress-todo"
+                        ></div>
 
                     </div>
 
@@ -228,6 +470,14 @@
 
                     <% }) %>
 
+                    <div class="empty-column">
+
+                        <span class="icon">📭</span>
+
+                        No tasks yet
+
+                    </div>
+
                 </div>
 
             </div>
@@ -248,23 +498,33 @@
 
                 <div class="column-title">
 
-                    <h5 class="mb-0">
-                        IN PROGRESS
-                    </h5>
+                    <div class="column-header">
 
-                    <div class="column-actions">
+                        <h5 class="mb-0">IN PROGRESS</h5>
 
-                        <span class="badge bg-primary task-count">
-                            <%= inProgressTasks.length %>
-                        </span>
+                        <div class="column-actions">
 
-                        <button
-                            class="btn btn-sm btn-outline-primary add-task-btn"
-                            data-status="IN_PROGRESS"
-                            type="button"
-                        >
-                            +
-                        </button>
+                            <span class="badge bg-primary task-count">
+                                <%= inProgressTasks.length %>
+                            </span>
+
+                            <button
+                                class="btn btn-sm btn-outline-primary add-task-btn"
+                                data-status="IN_PROGRESS"
+                                type="button"
+                            >
+                                +
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                    <div class="column-progress">
+
+                        <div
+                            class="column-progress-fill progress-progress"
+                        ></div>
 
                     </div>
 
@@ -286,6 +546,14 @@
 
                     <% }) %>
 
+                    <div class="empty-column">
+
+                        <span class="icon">📭</span>
+
+                        No tasks yet
+
+                    </div>
+
                 </div>
 
             </div>
@@ -306,23 +574,33 @@
 
                 <div class="column-title">
 
-                    <h5 class="mb-0">
-                        REVIEW
-                    </h5>
+                    <div class="column-header">
 
-                    <div class="column-actions">
+                        <h5 class="mb-0">REVIEW</h5>
 
-                        <span class="badge bg-warning text-dark task-count">
-                            <%= reviewTasks.length %>
-                        </span>
+                        <div class="column-actions">
 
-                        <button
-                            class="btn btn-sm btn-outline-primary add-task-btn"
-                            data-status="REVIEW"
-                            type="button"
-                        >
-                            +
-                        </button>
+                            <span class="badge bg-warning text-dark task-count">
+                                <%= reviewTasks.length %>
+                            </span>
+
+                            <button
+                                class="btn btn-sm btn-outline-primary add-task-btn"
+                                data-status="REVIEW"
+                                type="button"
+                            >
+                                +
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                    <div class="column-progress">
+
+                        <div
+                            class="column-progress-fill progress-review"
+                        ></div>
 
                     </div>
 
@@ -344,6 +622,14 @@
 
                     <% }) %>
 
+                    <div class="empty-column">
+
+                        <span class="icon">📭</span>
+
+                        No tasks yet
+
+                    </div>
+
                 </div>
 
             </div>
@@ -364,23 +650,33 @@
 
                 <div class="column-title">
 
-                    <h5 class="mb-0">
-                        DONE
-                    </h5>
+                    <div class="column-header">
 
-                    <div class="column-actions">
+                        <h5 class="mb-0">DONE</h5>
 
-                        <span class="badge bg-success task-count">
-                            <%= doneTasks.length %>
-                        </span>
+                        <div class="column-actions">
 
-                        <button
-                            class="btn btn-sm btn-outline-primary add-task-btn"
-                            data-status="DONE"
-                            type="button"
-                        >
-                            +
-                        </button>
+                            <span class="badge bg-success task-count">
+                                <%= doneTasks.length %>
+                            </span>
+
+                            <button
+                                class="btn btn-sm btn-outline-primary add-task-btn"
+                                data-status="DONE"
+                                type="button"
+                            >
+                                +
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                    <div class="column-progress">
+
+                        <div
+                            class="column-progress-fill progress-done"
+                        ></div>
 
                     </div>
 
@@ -401,6 +697,14 @@
                         </div>
 
                     <% }) %>
+
+                    <div class="empty-column">
+
+                        <span class="icon">📭</span>
+
+                        No tasks yet
+
+                    </div>
 
                 </div>
 
@@ -568,20 +872,30 @@
                             class="form-control"
                         >
 
-                    </div>
+                   <div class="mb-3">
 
+                   <label class="form-label">
+                   Assignee
+                  </label>
 
-                    <div class="mb-3">
+                  <select
+                  id="editTaskAssignee"
+                  class="form-select"
+                  >
 
-                        <label class="form-label">
-                            Assignee
-                        </label>
+                 <option value="">
+Unassigned
+                 </option>
 
-                        <input
-                            class="form-control"
-                            id="editTaskAssignee"
-                            disabled
-                        >
+                  <% members.forEach(member => { %>
+
+                  <option value="<%= member.id %>">
+                  <%= member.name %>
+                  </option>
+
+                 <% }) %>
+
+                 </select>
 
                     </div>
 
@@ -905,24 +1219,47 @@ function getAssigneeInitials(name){
 
 function updateCounts(){
 
-    document
-        .querySelectorAll(".board-column")
+    const total =
+        document.querySelectorAll(".task-wrapper").length;
+
+    document.querySelectorAll(".board-column")
         .forEach(column=>{
 
-            const count =
-                column.querySelectorAll(
-                    ".task-wrapper"
-                ).length;
+            const visible =
+                [...column.querySelectorAll(".task-wrapper")]
+                    .filter(task=>task.style.display!=="none");
 
             const countElement =
-                column.querySelector(
-                    ".task-count"
-                );
+                column.querySelector(".task-count");
 
             if(countElement){
 
                 countElement.textContent =
-                    count;
+                    visible.length;
+
+            }
+
+            const empty =
+                column.querySelector(".empty-column");
+
+            if(empty){
+
+                empty.style.display =
+                    visible.length===0
+                        ? "block"
+                        : "none";
+
+            }
+
+            const fill =
+                column.querySelector(".column-progress-fill");
+
+            if(fill){
+
+                fill.style.width =
+                    total
+                        ? `${visible.length/total*100}%`
+                        : "0%";
 
             }
 
@@ -1058,8 +1395,7 @@ function attachTaskEvents(wrapper){
             document.getElementById(
                 "editTaskAssignee"
             ).value =
-                task.assignee_name ||
-                "Unassigned";
+             task.assigned_to || "";
 
 
             document.getElementById(
@@ -1381,6 +1717,18 @@ function createTaskWrapper(task){
     attachTaskEvents(
         wrapper
     );
+    
+
+
+
+   applyKanbanFilters();
+
+
+
+
+
+
+
 
 
     return wrapper;
@@ -1568,21 +1916,40 @@ function updateTaskCard(wrapper, task){
     // ========================================
 
     const avatar =
-        card.querySelector(
-            ".avatar-circle"
-        );
+    card.querySelector(".avatar-circle");
+
+    const newInitials =
+    (task.assignee_name || "U")
+        .split(" ")
+        .map(name => name[0])
+        .join("")
+        .substring(0,2)
+        .toUpperCase();
+
+     avatar.textContent =
+    newInitials;
+
+      avatar.title =
+     task.assignee_name || "Unassigned";
 
 
-    if(avatar){
 
-        avatar.textContent =
-            initials;
 
-        avatar.title =
-            task.assignee_name ||
-            "Unassigned";
 
-    }
+
+
+
+
+
+
+
+
+
+applyKanbanFilters();
+
+
+
+
 
 }
 
@@ -1722,6 +2089,22 @@ document
                     .appendChild(
                         wrapper
                     );
+
+                wrapper.animate(
+                    [
+                        {
+                            transform:"scale(.96)",
+                            opacity:.6
+                        },
+                        {
+                            transform:"scale(1)",
+                            opacity:1
+                        }
+                    ],
+                    {
+                        duration:180
+                    }
+                );
 
 
                 updateCounts();
@@ -2024,35 +2407,27 @@ document
                             credentials:
                                 "same-origin",
 
-                            body:
-                                JSON.stringify({
+                            body: JSON.stringify({
 
-                                    title:
-                                        document.getElementById(
-                                            "editTaskTitle"
-                                        ).value,
+    title:
+        document.getElementById("editTaskTitle").value,
 
-                                    description:
-                                        document.getElementById(
-                                            "editTaskDescription"
-                                        ).value,
+    description:
+        document.getElementById("editTaskDescription").value,
 
-                                    priority:
-                                        document.getElementById(
-                                            "editTaskPriority"
-                                        ).value,
+    priority:
+        document.getElementById("editTaskPriority").value,
 
-                                    status:
-                                        document.getElementById(
-                                            "editTaskStatus"
-                                        ).value,
+    status:
+        document.getElementById("editTaskStatus").value,
 
-                                    due_date:
-                                        document.getElementById(
-                                            "editTaskDueDate"
-                                        ).value
+    due_date:
+        document.getElementById("editTaskDueDate").value,
 
-                                })
+    assigned_to:
+        document.getElementById("editTaskAssignee").value || null
+
+})
 
                         }
                     );
@@ -2155,6 +2530,172 @@ document
 
         }
     );
+
+
+
+// ============================================
+// SEARCH + FILTER + SORT
+// ============================================
+
+function applyKanbanFilters(){
+
+    const search =
+        document
+            .getElementById("kanbanSearch")
+            .value
+            .toLowerCase();
+
+    const priority =
+        document
+            .getElementById("priorityFilter")
+            .value;
+
+    const assignee =
+        document
+            .getElementById("assigneeFilter")
+            .value;
+
+    const sort =
+        document
+            .getElementById("sortTasks")
+            .value;
+
+    document
+        .querySelectorAll(".task-list")
+        .forEach(taskList=>{
+
+            const wrappers =
+                Array.from(
+                    taskList.querySelectorAll(".task-wrapper")
+                );
+
+            wrappers.forEach(wrapper=>{
+
+                const task =
+                    JSON.parse(wrapper.dataset.task);
+
+                const title =
+                    (task.title || "").toLowerCase();
+
+                const description =
+                    (task.description || "").toLowerCase();
+
+                const taskAssignee =
+                    task.assignee_name || "";
+
+                const matchesSearch =
+                    title.includes(search) ||
+                    description.includes(search);
+
+                const matchesPriority =
+                    !priority ||
+                    task.priority === priority;
+
+                const matchesAssignee =
+                    !assignee ||
+                    taskAssignee === assignee;
+
+                wrapper.style.display =
+                    matchesSearch &&
+                    matchesPriority &&
+                    matchesAssignee
+                        ? ""
+                        : "none";
+
+            });
+
+            wrappers.sort((a,b)=>{
+
+                const taskA =
+                    JSON.parse(a.dataset.task);
+
+                const taskB =
+                    JSON.parse(b.dataset.task);
+
+                if(sort==="oldest"){
+
+                    return taskA.id-taskB.id;
+
+                }
+
+                if(sort==="due"){
+
+                    const dueA =
+                        taskA.due_date
+                            ? new Date(taskA.due_date)
+                            : new Date("9999-12-31");
+
+                    const dueB =
+                        taskB.due_date
+                            ? new Date(taskB.due_date)
+                            : new Date("9999-12-31");
+
+                    return dueA-dueB;
+
+                }
+
+                return taskB.id-taskA.id;
+
+            });
+
+            wrappers.forEach(wrapper=>{
+
+                taskList.appendChild(wrapper);
+
+            });
+
+        });
+
+    updateCounts();
+
+}
+
+
+
+
+
+// ============================================
+// FILTER EVENTS
+// ============================================
+
+[
+    "kanbanSearch",
+    "priorityFilter",
+    "assigneeFilter",
+    "sortTasks"
+].forEach(id=>{
+
+    document
+        .getElementById(id)
+        .addEventListener(
+            "input",
+            applyKanbanFilters
+        );
+
+    document
+        .getElementById(id)
+        .addEventListener(
+            "change",
+            applyKanbanFilters
+        );
+
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 // ============================================
@@ -2329,10 +2870,11 @@ if(socket){
 
 
 // ============================================
-// INITIAL COUNT UPDATE
+// INITIAL BOARD STATE
 // ============================================
 
 updateCounts();
+applyKanbanFilters();
 
 
 </script>
