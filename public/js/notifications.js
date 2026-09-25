@@ -745,5 +745,63 @@ teamFlowSocket.on(
             }
         );
 
+
+
+
+
+
+        
+    
+
+        // ============================================
+// GLOBAL TOAST NOTIFICATIONS
+// ============================================
+
+window.showToast = function(message, type = "success"){
+
+    let container = document.getElementById("toastContainer");
+
+    if(!container){
+
+        container = document.createElement("div");
+        container.id = "toastContainer";
+        container.className = "toast-container position-fixed top-0 end-0 p-3";
+        container.style.zIndex = "2000";
+
+        document.body.appendChild(container);
+
     }
-);
+
+    const toast = document.createElement("div");
+
+    toast.className = `toast align-items-center text-bg-${type} border-0`;
+
+    toast.setAttribute("role", "alert");
+    toast.setAttribute("aria-live", "assertive");
+    toast.setAttribute("aria-atomic", "true");
+
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">
+                ${message}
+            </div>
+            <button
+                type="button"
+                class="btn-close btn-close-white me-2 m-auto"
+                data-bs-dismiss="toast">
+            </button>
+        </div>
+    `;
+
+    container.appendChild(toast);
+
+    const bsToast = new bootstrap.Toast(toast,{
+        delay:3000
+    });
+
+    bsToast.show();
+
+    toast.addEventListener("hidden.bs.toast",()=>toast.remove());
+
+};
+

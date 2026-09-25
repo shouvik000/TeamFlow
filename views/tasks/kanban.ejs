@@ -24,11 +24,6 @@
     background:#f8f9fa;
 }
 
-.board-container{
-    overflow-x:auto;
-    padding-bottom:10px;
-}
-
 .board-column{
     min-height:620px;
     background:white;
@@ -89,6 +84,24 @@
 .task-card.dragging{
     opacity:.45;
     transform:rotate(3deg);
+}
+
+.task-card.saving{
+    opacity:.6;
+    pointer-events:none;
+    position:relative;
+}
+
+.task-card.saving::after{
+    content:"Saving...";
+    position:absolute;
+    inset:0;
+    background:rgba(255,255,255,.75);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:.85rem;
+    font-weight:600;
 }
 
 .task-count{
@@ -180,6 +193,18 @@
     }
 
 }
+
+.editable-title{
+    cursor:text;
+    border-radius:4px;
+    transition:background .2s;
+}
+
+.editable-title:hover{
+    background:#eef6ff;
+}
+
+
 
     </style>
 
@@ -406,7 +431,7 @@ KANBAN TOOLBAR
          KANBAN BOARD
     ============================================= -->
 
-    <div class="row g-3">
+    <div class="row g-3 board-row">
 
 
         <!-- ========================================
@@ -872,33 +897,34 @@ KANBAN TOOLBAR
                             class="form-control"
                         >
 
-                   <div class="mb-3">
-
-                   <label class="form-label">
-                   Assignee
-                  </label>
-
-                  <select
-                  id="editTaskAssignee"
-                  class="form-select"
-                  >
-
-                 <option value="">
-Unassigned
-                 </option>
-
-                  <% members.forEach(member => { %>
-
-                  <option value="<%= member.id %>">
-                  <%= member.name %>
-                  </option>
-
-                 <% }) %>
-
-                 </select>
-
                     </div>
 
+                    <div class="mb-3">
+
+                        <label class="form-label">
+                            Assignee
+                        </label>
+
+                        <select
+                            id="editTaskAssignee"
+                            class="form-select"
+                        >
+
+                            <option value="">
+                                Unassigned
+                            </option>
+
+                            <% members.forEach(member => { %>
+
+                                <option value="<%= member.id %>">
+                                    <%= member.name %>
+                                </option>
+
+                            <% }) %>
+
+                        </select>
+
+                    </div>
 
                 </form>
 
@@ -1067,6 +1093,7 @@ Unassigned
 
 
                     <button
+                        id="createTaskButton"
                         class="btn btn-primary"
                         type="submit"
                     >
@@ -1078,6 +1105,120 @@ Unassigned
 
 
             </form>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- ============================================
+     TOAST CONTAINER
+============================================= -->
+<!--
+<div
+    id="toastContainer"
+    class="toast-container position-fixed bottom-0 end-0 p-3"
+    style="z-index:1100;">
+</div>
+-->
+
+
+
+
+
+<!-- Toast Container -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+
+    <div
+        id="kanbanToast"
+        class="toast align-items-center text-bg-dark border-0"
+        role="alert"
+        aria-live="assertive"
+        aria-atomic="true"
+    >
+
+        <div class="d-flex">
+
+            <div
+                class="toast-body"
+                id="kanbanToastBody"
+            >
+                Notification
+            </div>
+
+            <button
+                type="button"
+                class="btn-close btn-close-white me-2 m-auto"
+                data-bs-dismiss="toast"
+            ></button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- ============================================
+     CONFIRMATION MODAL
+============================================= -->
+
+<div class="modal fade" id="confirmModal" tabindex="-1">
+
+    <div class="modal-dialog modal-dialog-centered">
+
+        <div class="modal-content">
+
+            <div class="modal-header">
+
+                <h5 class="modal-title">Confirm</h5>
+
+                <button
+                    class="btn-close"
+                    data-bs-dismiss="modal">
+                </button>
+
+            </div>
+
+            <div class="modal-body" id="confirmMessage">
+
+                Are you sure?
+
+            </div>
+
+            <div class="modal-footer">
+
+                <button
+                    class="btn btn-secondary"
+                    data-bs-dismiss="modal">
+
+                    Cancel
+
+                </button>
+
+                <button
+                    class="btn btn-danger"
+                    id="confirmAction">
+
+                    Yes
+
+                </button>
+
+            </div>
 
         </div>
 
@@ -1110,1775 +1251,14 @@ Unassigned
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 
-<script>
-
-
-// ============================================
-// SOCKET
-// ============================================
-
-const socket =
-    window.teamFlowSocket;
-
-
-// ============================================
-// MODALS
-// ============================================
-
-const taskModal =
-    new bootstrap.Modal(
-        document.getElementById("taskModal")
-    );
-
-
-const addTaskModal =
-    new bootstrap.Modal(
-        document.getElementById("addTaskModal")
-    );
-
-
-// ============================================
-// DRAG VARIABLES
-// ============================================
-
-let draggedCard = null;
-
-let isDragging = false;
-
-
-// ============================================
-// ESCAPE HTML
-// ============================================
-
-function escapeHtml(value){
-
-    if(
-        value === null ||
-        value === undefined
-    ){
-
-        return "";
-
-    }
-
-    return String(value)
-        .replace(/&/g,"&amp;")
-        .replace(/</g,"&lt;")
-        .replace(/>/g,"&gt;")
-        .replace(/"/g,"&quot;")
-        .replace(/'/g,"&#039;");
-
-}
-
-
-// ============================================
-// PRIORITY COLOR HELPER
-// ============================================
-
-function getPriorityColor(priority){
-
-    return {
-
-        LOW:"success",
-
-        MEDIUM:"secondary",
-
-        HIGH:"warning",
-
-        URGENT:"danger"
-
-    }[priority] || "secondary";
-
-}
-
-
-// ============================================
-// GET ASSIGNEE INITIALS
-// ============================================
-
-function getAssigneeInitials(name){
-
-    return (
-
-        name || "U"
-
-    )
-    .split(" ")
-    .filter(Boolean)
-    .map(name => name[0])
-    .join("")
-    .substring(0,2)
-    .toUpperCase();
-
-}
-
-
-// ============================================
-// UPDATE COLUMN COUNTS
-// ============================================
-
-function updateCounts(){
-
-    const total =
-        document.querySelectorAll(".task-wrapper").length;
-
-    document.querySelectorAll(".board-column")
-        .forEach(column=>{
-
-            const visible =
-                [...column.querySelectorAll(".task-wrapper")]
-                    .filter(task=>task.style.display!=="none");
-
-            const countElement =
-                column.querySelector(".task-count");
-
-            if(countElement){
-
-                countElement.textContent =
-                    visible.length;
-
-            }
-
-            const empty =
-                column.querySelector(".empty-column");
-
-            if(empty){
-
-                empty.style.display =
-                    visible.length===0
-                        ? "block"
-                        : "none";
-
-            }
-
-            const fill =
-                column.querySelector(".column-progress-fill");
-
-            if(fill){
-
-                fill.style.width =
-                    total
-                        ? `${visible.length/total*100}%`
-                        : "0%";
-
-            }
-
-        });
-
-}
-
-
-// ============================================
-// ATTACH EVENTS TO TASK
-// ============================================
-
-function attachTaskEvents(wrapper){
-
-
-    // ========================================
-    // EDIT / DELETE BUTTONS
-    // ========================================
-
-    wrapper
-        .querySelectorAll(
-            ".task-actions button"
-        )
-        .forEach(button=>{
-
-
-            button.addEventListener(
-                "click",
-                event=>{
-
-                    event.stopPropagation();
-
-
-                    // =========================
-                    // EDIT
-                    // =========================
-
-                    if(
-                        button.classList.contains(
-                            "edit-task-btn"
-                        )
-                    ){
-
-                        wrapper.click();
-
-                        return;
-
-                    }
-
-
-                    // =========================
-                    // DELETE
-                    // =========================
-
-                    if(
-                        button.classList.contains(
-                            "delete-task-btn"
-                        )
-                    ){
-
-                        deleteTask(wrapper);
-
-                    }
-
-                }
-            );
-
-        });
-
-
-    // ========================================
-    // OPEN EDIT MODAL
-    // ========================================
-
-    wrapper.addEventListener(
-        "click",
-        ()=>{
-
-
-            if(isDragging){
-
-                return;
-
-            }
-
-
-            const task =
-                JSON.parse(
-                    wrapper.dataset.task
-                );
-
-
-            document.getElementById(
-                "editTaskId"
-            ).value =
-                task.id;
-
-
-            document.getElementById(
-                "editTaskTitle"
-            ).value =
-                task.title || "";
-
-
-            document.getElementById(
-                "editTaskDescription"
-            ).value =
-                task.description || "";
-
-
-            document.getElementById(
-                "editTaskPriority"
-            ).value =
-                task.priority || "MEDIUM";
-
-
-            document.getElementById(
-                "editTaskStatus"
-            ).value =
-                task.status || "TODO";
-
-
-            document.getElementById(
-                "editTaskDueDate"
-            ).value =
-                task.due_date
-                    ? String(
-                        task.due_date
-                    ).substring(0,10)
-                    : "";
-
-
-            document.getElementById(
-                "editTaskAssignee"
-            ).value =
-             task.assigned_to || "";
-
-
-            document.getElementById(
-                "taskModalLabel"
-            ).textContent =
-                task.title || "Task";
-
-
-            document.getElementById(
-                "openTaskPage"
-            ).href =
-                `/projects/${task.project_id}/tasks`;
-
-
-            taskModal.show();
-
-        }
-    );
-
-
-    // ========================================
-    // DRAG
-    // ========================================
-
-    const card =
-        wrapper.querySelector(
-            ".task-card"
-        );
-
-
-    if(!card){
-
-        return;
-
-    }
-
-
-    card.addEventListener(
-        "dragstart",
-        ()=>{
-
-            draggedCard = card;
-
-            isDragging = true;
-
-            card.classList.add(
-                "dragging"
-            );
-
-        }
-    );
-
-
-    card.addEventListener(
-        "dragend",
-        ()=>{
-
-            card.classList.remove(
-                "dragging"
-            );
-
-            setTimeout(
-                ()=>{
-                    isDragging = false;
-                    draggedCard = null;
-                },
-                100
-            );
-
-        }
-    );
-
-}
-
-
-// ============================================
-// DELETE TASK
-// ============================================
-
-async function deleteTask(wrapper){
-
-
-    if(
-        !confirm(
-            "Delete this task?"
-        )
-    ){
-
-        return;
-
-    }
-
-
-    const task =
-        JSON.parse(
-            wrapper.dataset.task
-        );
-
-
-    try{
-
-
-        const response =
-            await fetch(
-                `/kanban/task/${task.id}/delete`,
-                {
-
-                    method:"POST",
-
-                    credentials:"same-origin"
-
-                }
-            );
-
-
-        const result =
-            await response.json();
-
-
-        if(!result.success){
-
-            alert(
-                result.message ||
-                "Failed to delete task."
-            );
-
-            return;
-
-        }
-
-
-        // =====================================
-        // REMOVE IMMEDIATELY
-        // =====================================
-
-        wrapper.remove();
-
-
-        // =====================================
-        // UPDATE COUNTS
-        // =====================================
-
-        updateCounts();
-
-
-    }catch(error){
-
-        console.error(
-            "Delete task error:",
-            error
-        );
-
-        alert(
-            "Failed to delete task."
-        );
-
-    }
-
-}
-
-
-// ============================================
-// CREATE TASK CARD
-// ============================================
-
-function createTaskWrapper(task){
-
-
-    const wrapper =
-        document.createElement(
-            "div"
-        );
-
-
-    wrapper.className =
-        "task-wrapper";
-
-
-    wrapper.dataset.task =
-        JSON.stringify(task);
-
-
-    const initials =
-        getAssigneeInitials(
-            task.assignee_name
-        );
-
-
-    const priorityColor =
-        getPriorityColor(
-            task.priority
-        );
-
-
-    wrapper.innerHTML = `
-
-        <div
-            class="card mb-3 task-card border-0 shadow-sm"
-            draggable="true"
-            data-task-id="${task.id}"
-        >
-
-            <div class="card-body p-3">
-
-
-                <div
-                    class="d-flex justify-content-between align-items-start mb-2"
-                >
-
-                    <h6
-                        class="card-title fw-semibold mb-0"
-                    >
-                        ${escapeHtml(
-                            task.title
-                        )}
-                    </h6>
-
-
-                    <div class="task-actions">
-
-
-                        <button
-                            class="btn btn-sm btn-light edit-task-btn"
-                            type="button"
-                            title="Edit Task"
-                        >
-                            ✏️
-                        </button>
-
-
-                        <button
-                            class="btn btn-sm btn-light delete-task-btn"
-                            type="button"
-                            title="Delete Task"
-                        >
-                            🗑️
-                        </button>
-
-
-                    </div>
-
-                </div>
-
-
-                <p
-                    class="card-text text-muted small mb-3"
-                >
-                    ${escapeHtml(
-                        task.description ||
-                        "No description"
-                    )}
-                </p>
-
-
-                <div
-                    class="d-flex justify-content-between align-items-center"
-                >
-
-
-                    <div
-                        class="d-flex gap-2 align-items-center flex-wrap"
-                    >
-
-
-                        <span
-                            class="badge bg-${priorityColor}"
-                        >
-                            ${escapeHtml(
-                                task.priority
-                            )}
-                        </span>
-
-
-                        ${
-                            task.due_date
-
-                            ? `
-
-                                <span
-                                    class="badge bg-light text-dark border due-date-badge"
-                                >
-                                    📅
-                                    ${new Date(
-                                        task.due_date
-                                    ).toLocaleDateString()}
-                                </span>
-
-                            `
-
-                            : ""
-
-                        }
-
-
-                    </div>
-
-
-                    <div
-                        class="avatar-circle"
-                        title="${escapeHtml(
-                            task.assignee_name ||
-                            "Unassigned"
-                        )}"
-                    >
-                        ${initials}
-                    </div>
-
-
-                </div>
-
-
-            </div>
-
-        </div>
-
-    `;
-
-
-    attachTaskEvents(
-        wrapper
-    );
-    
-
-
-
-   applyKanbanFilters();
-
-
-
-
-
-
-
-
-
-    return wrapper;
-
-}
-
-
-// ============================================
-// UPDATE EXISTING TASK CARD
-// ============================================
-
-function updateTaskCard(wrapper, task){
-
-
-    if(!wrapper){
-
-        return;
-
-    }
-
-
-    // ========================================
-    // SAVE NEW TASK DATA
-    // ========================================
-
-    wrapper.dataset.task =
-        JSON.stringify(task);
-
-
-    const card =
-        wrapper.querySelector(
-            ".task-card"
-        );
-
-
-    if(!card){
-
-        return;
-
-    }
-
-
-    // ========================================
-    // PRIORITY COLOR
-    // ========================================
-
-    const priorityColor =
-        getPriorityColor(
-            task.priority
-        );
-
-
-    // ========================================
-    // ASSIGNEE INITIALS
-    // ========================================
-
-    const initials =
-        getAssigneeInitials(
-            task.assignee_name
-        );
-
-
-    // ========================================
-    // TITLE
-    // ========================================
-
-    const title =
-        card.querySelector(
-            ".card-title"
-        );
-
-
-    if(title){
-
-        title.textContent =
-            task.title || "";
-
-    }
-
-
-    // ========================================
-    // DESCRIPTION
-    // ========================================
-
-    const description =
-        card.querySelector(
-            ".card-text"
-        );
-
-
-    if(description){
-
-        description.textContent =
-            task.description ||
-            "No description";
-
-    }
-
-
-    // ========================================
-    // PRIORITY BADGE
-    // ========================================
-
-    const badge =
-        card.querySelector(
-            ".badge"
-        );
-
-
-    if(badge){
-
-        badge.className =
-            `badge bg-${priorityColor}`;
-
-        badge.textContent =
-            task.priority;
-
-    }
-
-
-    // ========================================
-    // DUE DATE
-    // ========================================
-
-    const dueBadge =
-        card.querySelector(
-            ".due-date-badge"
-        );
-
-
-    if(task.due_date){
-
-
-        const formattedDate =
-            new Date(
-                task.due_date
-            ).toLocaleDateString();
-
-
-        if(dueBadge){
-
-            dueBadge.textContent =
-                `📅 ${formattedDate}`;
-
-        }else{
-
-
-            const span =
-                document.createElement(
-                    "span"
-                );
-
-
-            span.className =
-                "badge bg-light text-dark border due-date-badge";
-
-
-            span.textContent =
-                `📅 ${formattedDate}`;
-
-
-            if(
-                badge &&
-                badge.parentElement
-            ){
-
-                badge.parentElement.appendChild(
-                    span
-                );
-
-            }
-
-        }
-
-
-    }else if(dueBadge){
-
-        dueBadge.remove();
-
-    }
-
-
-    // ========================================
-    // ASSIGNEE AVATAR
-    // ========================================
-
-    const avatar =
-    card.querySelector(".avatar-circle");
-
-    const newInitials =
-    (task.assignee_name || "U")
-        .split(" ")
-        .map(name => name[0])
-        .join("")
-        .substring(0,2)
-        .toUpperCase();
-
-     avatar.textContent =
-    newInitials;
-
-      avatar.title =
-     task.assignee_name || "Unassigned";
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-applyKanbanFilters();
-
-
-
-
-
-}
-
-
-// ============================================
-// INITIALIZE EXISTING TASKS
-// ============================================
-
-document
-    .querySelectorAll(
-        ".task-wrapper"
-    )
-    .forEach(
-        attachTaskEvents
-    );
-
-
-// ============================================
-// DRAG & DROP
-// ============================================
-
-document
-    .querySelectorAll(
-        ".board-column"
-    )
-    .forEach(column=>{
-
-
-        // =====================================
-        // DRAG OVER
-        // =====================================
-
-        column.addEventListener(
-            "dragover",
-            event=>{
-
-                event.preventDefault();
-
-                column.classList.add(
-                    "drag-over"
-                );
-
-            }
-        );
-
-
-        // =====================================
-        // DRAG LEAVE
-        // =====================================
-
-        column.addEventListener(
-            "dragleave",
-            ()=>{
-
-                column.classList.remove(
-                    "drag-over"
-                );
-
-            }
-        );
-
-
-        // =====================================
-        // DROP
-        // =====================================
-
-        column.addEventListener(
-            "drop",
-            async()=>{
-
-
-                column.classList.remove(
-                    "drag-over"
-                );
-
-
-                if(!draggedCard){
-
-                    return;
-
-                }
-
-
-                const wrapper =
-                    draggedCard.closest(
-                        ".task-wrapper"
-                    );
-
-
-                if(!wrapper){
-
-                    return;
-
-                }
-
-
-                const task =
-                    JSON.parse(
-                        wrapper.dataset.task
-                    );
-
-
-                const previousStatus =
-                    task.status;
-
-
-                const newStatus =
-                    column.dataset.status;
-
-
-                if(
-                    previousStatus ===
-                    newStatus
-                ){
-
-                    return;
-
-                }
-
-
-                // =================================
-                // UPDATE UI FIRST
-                // =================================
-
-                task.status =
-                    newStatus;
-
-
-                wrapper.dataset.task =
-                    JSON.stringify(task);
-
-
-                column
-                    .querySelector(
-                        ".task-list"
-                    )
-                    .appendChild(
-                        wrapper
-                    );
-
-                wrapper.animate(
-                    [
-                        {
-                            transform:"scale(.96)",
-                            opacity:.6
-                        },
-                        {
-                            transform:"scale(1)",
-                            opacity:1
-                        }
-                    ],
-                    {
-                        duration:180
-                    }
-                );
-
-
-                updateCounts();
-
-
-                try{
-
-
-                    const response =
-                        await fetch(
-                            `/kanban/task/${task.id}/move`,
-                            {
-
-                                method:"POST",
-
-                                headers:{
-                                    "Content-Type":
-                                        "application/json"
-                                },
-
-                                credentials:
-                                    "same-origin",
-
-                                body:
-                                    JSON.stringify({
-                                        status:
-                                            newStatus
-                                    })
-
-                            }
-                        );
-
-
-                    const result =
-                        await response.json();
-
-
-                    if(!result.success){
-
-                        throw new Error(
-                            result.message
-                        );
-
-                    }
-
-
-                }catch(error){
-
-
-                    console.error(
-                        "Move task error:",
-                        error
-                    );
-
-
-                    // =========================
-                    // ROLLBACK
-                    // =========================
-
-                    task.status =
-                        previousStatus;
-
-
-                    wrapper.dataset.task =
-                        JSON.stringify(task);
-
-
-                    const previousColumn =
-                        document.querySelector(
-                            `[data-status="${previousStatus}"] .task-list`
-                        );
-
-
-                    if(previousColumn){
-
-                        previousColumn.appendChild(
-                            wrapper
-                        );
-
-                    }
-
-
-                    updateCounts();
-
-
-                    alert(
-                        "Failed to move task."
-                    );
-
-                }
-
-            }
-        );
-
-    });
-
-
-// ============================================
-// ADD TASK BUTTONS
-// ============================================
-
-document
-    .querySelectorAll(
-        ".add-task-btn"
-    )
-    .forEach(button=>{
-
-
-        button.addEventListener(
-            "click",
-            ()=>{
-
-
-                document
-                    .getElementById(
-                        "kanbanTaskForm"
-                    )
-                    .reset();
-
-
-                document
-                    .getElementById(
-                        "newTaskStatus"
-                    )
-                    .value =
-                    button.dataset.status;
-
-
-                addTaskModal.show();
-
-            }
-        );
-
-    });
-
-
-// ============================================
-// CREATE NEW TASK
-// ============================================
-
-document
-    .getElementById(
-        "kanbanTaskForm"
-    )
-    .addEventListener(
-        "submit",
-        async(event)=>{
-
-
-            event.preventDefault();
-
-
-            const status =
-                document.getElementById(
-                    "newTaskStatus"
-                ).value;
-
-
-            const title =
-                document.getElementById(
-                    "newTaskTitle"
-                ).value.trim();
-
-
-            const description =
-                document.getElementById(
-                    "newTaskDescription"
-                ).value.trim();
-
-
-            const priority =
-                document.getElementById(
-                    "newTaskPriority"
-                ).value;
-
-
-            if(!title){
-
-                alert(
-                    "Task title is required."
-                );
-
-                return;
-
-            }
-
-
-            try{
-
-
-                const response =
-                    await fetch(
-                        "/kanban/task/create",
-                        {
-
-                            method:"POST",
-
-                            headers:{
-                                "Content-Type":
-                                    "application/json"
-                            },
-
-                            credentials:
-                                "same-origin",
-
-                            body:
-                                JSON.stringify({
-
-                                    title,
-
-                                    description,
-
-                                    priority,
-
-                                    status
-
-                                })
-
-                        }
-                    );
-
-
-                const result =
-                    await response.json();
-
-
-                if(!result.success){
-
-                    alert(
-                        result.message ||
-                        "Failed to create task."
-                    );
-
-                    return;
-
-                }
-
-
-                addTaskModal.hide();
-
-
-                document
-                    .getElementById(
-                        "kanbanTaskForm"
-                    )
-                    .reset();
-
-
-            }catch(error){
-
-                console.error(
-                    "Create task error:",
-                    error
-                );
-
-                alert(
-                    "Failed to create task."
-                );
-
-            }
-
-        }
-    );
-
-
-// ============================================
-// SAVE TASK
-// ============================================
-
-document
-    .getElementById(
-        "saveTaskButton"
-    )
-    .addEventListener(
-        "click",
-        async()=>{
-
-
-            const taskId =
-                document.getElementById(
-                    "editTaskId"
-                ).value;
-
-
-            try{
-
-
-                const response =
-                    await fetch(
-                        `/kanban/task/${taskId}/update`,
-                        {
-
-                            method:"POST",
-
-                            headers:{
-                                "Content-Type":
-                                    "application/json"
-                            },
-
-                            credentials:
-                                "same-origin",
-
-                            body: JSON.stringify({
-
-    title:
-        document.getElementById("editTaskTitle").value,
-
-    description:
-        document.getElementById("editTaskDescription").value,
-
-    priority:
-        document.getElementById("editTaskPriority").value,
-
-    status:
-        document.getElementById("editTaskStatus").value,
-
-    due_date:
-        document.getElementById("editTaskDueDate").value,
-
-    assigned_to:
-        document.getElementById("editTaskAssignee").value || null
-
-})
-
-                        }
-                    );
-
-
-                const result =
-                    await response.json();
-
-
-                if(!result.success){
-
-                    alert(
-                        result.message ||
-                        "Failed to update task."
-                    );
-
-                    return;
-
-                }
-
-
-                // =================================
-                // CLOSE MODAL
-                // =================================
-
-                taskModal.hide();
-
-
-                // =================================
-                // FIND EXISTING CARD
-                // =================================
-
-                const card =
-                    document.querySelector(
-                        `[data-task-id="${result.task.id}"]`
-                    );
-
-
-                if(!card){
-
-                    return;
-
-                }
-
-
-                const wrapper =
-                    card.closest(
-                        ".task-wrapper"
-                    );
-
-
-                // =================================
-                // UPDATE CARD COMPLETELY
-                // =================================
-
-                updateTaskCard(
-                    wrapper,
-                    result.task
-                );
-
-
-                // =================================
-                // MOVE TO CORRECT COLUMN
-                // =================================
-
-                const targetColumn =
-                    document.querySelector(
-                        `[data-status="${result.task.status}"] .task-list`
-                    );
-
-
-                if(targetColumn){
-
-                    targetColumn.appendChild(
-                        wrapper
-                    );
-
-                }
-
-
-                // =================================
-                // UPDATE COUNTS
-                // =================================
-
-                updateCounts();
-
-
-            }catch(error){
-
-                console.error(
-                    "Update task error:",
-                    error
-                );
-
-                alert(
-                    "Failed to update task."
-                );
-
-            }
-
-        }
-    );
-
-
-
-// ============================================
-// SEARCH + FILTER + SORT
-// ============================================
-
-function applyKanbanFilters(){
-
-    const search =
-        document
-            .getElementById("kanbanSearch")
-            .value
-            .toLowerCase();
-
-    const priority =
-        document
-            .getElementById("priorityFilter")
-            .value;
-
-    const assignee =
-        document
-            .getElementById("assigneeFilter")
-            .value;
-
-    const sort =
-        document
-            .getElementById("sortTasks")
-            .value;
-
-    document
-        .querySelectorAll(".task-list")
-        .forEach(taskList=>{
-
-            const wrappers =
-                Array.from(
-                    taskList.querySelectorAll(".task-wrapper")
-                );
-
-            wrappers.forEach(wrapper=>{
-
-                const task =
-                    JSON.parse(wrapper.dataset.task);
-
-                const title =
-                    (task.title || "").toLowerCase();
-
-                const description =
-                    (task.description || "").toLowerCase();
-
-                const taskAssignee =
-                    task.assignee_name || "";
-
-                const matchesSearch =
-                    title.includes(search) ||
-                    description.includes(search);
-
-                const matchesPriority =
-                    !priority ||
-                    task.priority === priority;
-
-                const matchesAssignee =
-                    !assignee ||
-                    taskAssignee === assignee;
-
-                wrapper.style.display =
-                    matchesSearch &&
-                    matchesPriority &&
-                    matchesAssignee
-                        ? ""
-                        : "none";
-
-            });
-
-            wrappers.sort((a,b)=>{
-
-                const taskA =
-                    JSON.parse(a.dataset.task);
-
-                const taskB =
-                    JSON.parse(b.dataset.task);
-
-                if(sort==="oldest"){
-
-                    return taskA.id-taskB.id;
-
-                }
-
-                if(sort==="due"){
-
-                    const dueA =
-                        taskA.due_date
-                            ? new Date(taskA.due_date)
-                            : new Date("9999-12-31");
-
-                    const dueB =
-                        taskB.due_date
-                            ? new Date(taskB.due_date)
-                            : new Date("9999-12-31");
-
-                    return dueA-dueB;
-
-                }
-
-                return taskB.id-taskA.id;
-
-            });
-
-            wrappers.forEach(wrapper=>{
-
-                taskList.appendChild(wrapper);
-
-            });
-
-        });
-
-    updateCounts();
-
-}
-
-
-
-
-
-// ============================================
-// FILTER EVENTS
-// ============================================
-
-[
-    "kanbanSearch",
-    "priorityFilter",
-    "assigneeFilter",
-    "sortTasks"
-].forEach(id=>{
-
-    document
-        .getElementById(id)
-        .addEventListener(
-            "input",
-            applyKanbanFilters
-        );
-
-    document
-        .getElementById(id)
-        .addEventListener(
-            "change",
-            applyKanbanFilters
-        );
-
-});
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// ============================================
-// REAL-TIME TASK EVENTS
-// ============================================
-
-if(socket){
-
-
-    // ========================================
-    // TASK CREATED
-    // ========================================
-
-    socket.on(
-        "task:created",
-        task=>{
-
-
-            if(
-                document.querySelector(
-                    `[data-task-id="${task.id}"]`
-                )
-            ){
-
-                return;
-
-            }
-
-
-            const wrapper =
-                createTaskWrapper(
-                    task
-                );
-
-
-            const targetColumn =
-                document.querySelector(
-                    `[data-status="${task.status}"] .task-list`
-                );
-
-
-            if(targetColumn){
-
-                targetColumn.prepend(
-                    wrapper
-                );
-
-            }
-
-
-            updateCounts();
-
-        }
-    );
-
-
-    // ========================================
-    // TASK UPDATED
-    // ========================================
-
-    socket.on(
-        "task:updated",
-        task=>{
-
-
-            const card =
-                document.querySelector(
-                    `[data-task-id="${task.id}"]`
-                );
-
-
-            if(!card){
-
-                return;
-
-            }
-
-
-            const wrapper =
-                card.closest(
-                    ".task-wrapper"
-                );
-
-
-            if(!wrapper){
-
-                return;
-
-            }
-
-
-            // ================================
-            // UPDATE CARD
-            // ================================
-
-            updateTaskCard(
-                wrapper,
-                task
-            );
-
-
-            // ================================
-            // MOVE COLUMN
-            // ================================
-
-            const targetColumn =
-                document.querySelector(
-                    `[data-status="${task.status}"] .task-list`
-                );
-
-
-            if(targetColumn){
-
-                targetColumn.appendChild(
-                    wrapper
-                );
-
-            }
-
-
-            // ================================
-            // UPDATE COUNTS
-            // ================================
-
-            updateCounts();
-
-        }
-    );
-
-
-    // ========================================
-    // TASK DELETED
-    // ========================================
-
-    socket.on(
-        "task:deleted",
-        data=>{
-
-
-            const card =
-                document.querySelector(
-                    `[data-task-id="${data.id}"]`
-                );
-
-
-            // Already removed locally
-            if(!card){
-
-                return;
-
-            }
-
-
-            const wrapper =
-                card.closest(
-                    ".task-wrapper"
-                );
-
-
-            if(wrapper){
-
-                wrapper.remove();
-
-                updateCounts();
-
-            }
-
-        }
-    );
-
-}
-
-
-// ============================================
-// INITIAL BOARD STATE
-// ============================================
-
-updateCounts();
-applyKanbanFilters();
-
-
-</script>
-
+<script src="/js/kanban-utils.js"></script>
+<script src="/js/kanban-modals.js"></script>
+<script src="/js/kanban-drag.js"></script>
+<script src="/js/kanban-filters.js"></script>
+<script src="/js/kanban-socket.js"></script>
+<script src="/js/kanban.js"></script>
+<script src="/js/toast.js"></script>
+<script src="/js/confirm.js"></script>
 
 </body>
 
