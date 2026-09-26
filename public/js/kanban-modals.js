@@ -211,6 +211,23 @@ async function saveInlineTitle(wrapper,newTitle){
 
 
 // ============================================
+// ENABLE/DISABLE FORM CONTROLS
+// ============================================
+
+function setFormLoading(formId, loading){
+
+    const form = document.getElementById(formId);
+
+    if(!form) return;
+
+    form.querySelectorAll("input, textarea, select, button")
+        .forEach(element=>{
+            element.disabled = loading;
+        });
+
+}
+
+// ============================================
 // DELETE TASK
 // ============================================
 
@@ -480,10 +497,14 @@ document.getElementById("kanbanTaskForm").addEventListener("submit", async(event
         return;
     }
 
-    const createButton = document.getElementById("createTaskButton");
+   const createButton =
+    document.getElementById(
+        "createTaskButton"
+    );
 
-    createButton.disabled = true;
-    createButton.textContent = "Creating...";
+setFormLoading("kanbanTaskForm", true);
+
+createButton.textContent = "Creating...";
 
     try{
 
@@ -531,7 +552,8 @@ document.getElementById("kanbanTaskForm").addEventListener("submit", async(event
         console.error("Create task error:", error);
         showToast("Failed to create task.","danger");
     }finally{
-        createButton.disabled = false;
+        setFormLoading("kanbanTaskForm", false);
+
         createButton.textContent = "Create Task";
     }
 
@@ -546,6 +568,8 @@ document.getElementById("saveTaskButton").addEventListener("click", async()=>{
 
     const taskId = document.getElementById("editTaskId").value;
     const saveButton = document.getElementById("saveTaskButton");
+
+    setFormLoading("editTaskForm", true);
 
     saveButton.disabled = true;
     saveButton.textContent = "Saving...";
@@ -613,8 +637,10 @@ document.getElementById("saveTaskButton").addEventListener("click", async()=>{
         console.error("Update task error:", error);
         showToast("Failed to update task.","danger");
     }finally{
-        saveButton.disabled = false;
-        saveButton.textContent = "Save Changes";
+        setFormLoading("editTaskForm", false);
+
+         saveButton.disabled = false;
+         saveButton.textContent = "Save Changes";
     }
 
 });

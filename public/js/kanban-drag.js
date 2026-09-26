@@ -257,4 +257,79 @@ document.querySelectorAll(".board-column").forEach(column => {
 });
 
 
+let draggedCard = null;
+let isDragging = false;
+
+
+// ============================================
+// AUTO SCROLL WHILE DRAGGING
+// ============================================
+
+function autoScrollBoard(event){
+
+    if(!isDragging) return;
+
+    const edge = 120;
+    const speed = 18;
+
+    const x = event.clientX;
+
+    if(x > window.innerWidth - edge){
+
+        window.scrollBy({
+            left:speed,
+            behavior:"auto"
+        });
+
+    }else if(x < edge){
+
+        window.scrollBy({
+            left:-speed,
+            behavior:"auto"
+        });
+
+    }
+
+}
+
+
+card.addEventListener("dragstart",()=>{
+
+    draggedCard = card;
+    isDragging = true;
+
+    card.classList.add("dragging");
+
+    document.addEventListener(
+        "dragover",
+        autoScrollBoard
+    );
+
+});
+
+
+
+
+
+
+
+
+card.addEventListener("dragend",()=>{
+
+    card.classList.remove("dragging");
+
+    document.removeEventListener(
+        "dragover",
+        autoScrollBoard
+    );
+
+    setTimeout(()=>{
+        isDragging = false;
+        draggedCard = null;
+    },100);
+
+});
+
+
+
 
