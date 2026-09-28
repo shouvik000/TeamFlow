@@ -296,7 +296,14 @@ function autoScrollBoard(event){
 card.addEventListener("dragstart",()=>{
 
     draggedCard = card;
-    isDragging = true;
+    if(selectedTasks.size>1){
+
+    draggedCard = null;
+    return;
+
+}
+
+isDragging = true;
 
     card.classList.add("dragging");
 

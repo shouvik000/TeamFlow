@@ -2,6 +2,57 @@ const pool = require("../config/db");
 const activityService = require("../services/activityService");
 const socketService = require("../services/socketService");
 
+
+
+
+
+// ============================================
+// ACTIVITY LOGGER
+// ============================================
+
+async function logActivity({
+
+    organizationId,
+    projectId,
+    userId,
+    action,
+    details
+
+}){
+
+    await pool.query(
+        `
+        INSERT INTO activities
+        (
+            organization_id,
+            project_id,
+            user_id,
+            action,
+            details
+        )
+        VALUES($1,$2,$3,$4,$5)
+        `,
+        [
+            organizationId,
+            projectId,
+            userId,
+            action,
+            details
+        ]
+    );
+
+}
+
+
+
+
+
+
+
+
+
+
+
 // ============================================
 // GET KANBAN BOARD
 // ============================================
@@ -113,8 +164,6 @@ exports.createTask = async (req, res) => {
 
     try {
 
-        const projectId = Number(req.params.projectId);
-
         const organizationId = req.organization.id;
 
         const userId = req.session.user.id;
@@ -125,6 +174,8 @@ exports.createTask = async (req, res) => {
             priority,
             status
         } = req.body;
+
+        const projectId = Number(req.body.projectId);
 
         if (!title || !title.trim()) {
 
@@ -386,7 +437,6 @@ exports.moveTask = async (req, res) => {
             details: `Moved task to ${status}`
 
         });
-
         // ----------------------------------------
         // Real-time update
         // ----------------------------------------
@@ -674,9 +724,7 @@ exports.deleteTask = async (req, res) => {
 
             details: `Deleted task "${task.title}"`
 
-        });
-
-        // ----------------------------------------
+        });        // ----------------------------------------
         // Real-time update
         // ----------------------------------------
 

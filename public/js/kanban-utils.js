@@ -122,3 +122,51 @@ function updateCounts(){
     });
 
 }
+
+
+
+// ============================================
+// DUE DATE STATUS HELPER
+// ============================================
+
+window.getDueDateInfo = function(dueDate){
+
+    if(!dueDate){
+        return null;
+    }
+
+    const today = new Date();
+    today.setHours(0,0,0,0);
+
+    const due = new Date(dueDate);
+    due.setHours(0,0,0,0);
+
+    const diffDays = Math.round((due - today)/(1000*60*60*24));
+
+    if(diffDays < 0){
+        return {
+            label:"Overdue",
+            className:"bg-danger text-white"
+        };
+    }
+
+    if(diffDays === 0){
+        return {
+            label:"Due Today",
+            className:"bg-warning text-dark"
+        };
+    }
+
+    if(diffDays === 1){
+        return {
+            label:"Due Tomorrow",
+            className:"bg-info text-dark"
+        };
+    }
+
+    return {
+        label:due.toLocaleDateString(),
+        className:"bg-light text-dark border"
+    };
+
+};

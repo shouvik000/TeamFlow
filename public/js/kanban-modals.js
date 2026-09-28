@@ -5,6 +5,9 @@
 // Add / Edit modal logic, task card creation and updates
 // ============================================
 
+//BULK SELECTION
+const selectedTasks=new set();
+
 // ============================================
 // ATTACH EVENTS TO TASK
 // ============================================
@@ -43,59 +46,65 @@ function attachTaskEvents(wrapper){
 
 
     // ========================================
-    // INLINE TITLE EDIT
-    // ========================================
+// INLINE TITLE EDIT
+// ========================================
 
-    const title=wrapper.querySelector(".editable-title");
+const title = wrapper.querySelector(".editable-title");
 
-    if(title){
+if(title && !title.dataset.inlineBound){
 
-        title.addEventListener("click",()=>{
+    title.dataset.inlineBound = "true";
 
-            const current=title.textContent;
+    title.addEventListener("dblclick",(event)=>{
 
-            const input=document.createElement("input");
+        event.stopPropagation();
 
-            input.className="form-control form-control-sm";
-            input.value=current;
+        const current = title.textContent;
 
-            title.replaceWith(input);
+        const input = document.createElement("input");
 
-            input.focus();
-            input.select();
+        input.className = "form-control form-control-sm";
+        input.value = current;
 
-            const finish=async(save)=>{
+        title.replaceWith(input);
 
-                const h6=document.createElement("h6");
+        input.focus();
+        input.select();
 
-                h6.className="card-title fw-semibold mb-0 editable-title";
-                h6.textContent=save?input.value:current;
+        const finish = async(save)=>{
 
-                input.replaceWith(h6);
+            const h6 = document.createElement("h6");
 
-                attachTaskEvents(wrapper);
+            h6.className = "card-title fw-semibold mb-0 editable-title";
+            h6.textContent = save ? input.value.trim() : current;
+            h6.dataset.inlineBound = "true";
 
-                if(save && input.value!==current){
+            input.replaceWith(h6);
 
-                    await saveInlineTitle(wrapper,input.value);
+            if(save && input.value.trim() && input.value.trim() !== current){
 
-                }
+                await saveInlineTitle(wrapper,input.value.trim());
 
-            };
+            }
 
-            input.addEventListener("keydown",e=>{
+            // Rebind the new title element
+            attachTaskEvents(wrapper);
 
-                if(e.key==="Enter") finish(true);
+        };
 
-                if(e.key==="Escape") finish(false);
+        input.addEventListener("keydown",(e)=>{
 
-            });
+            if(e.key==="Enter") finish(true);
 
-            input.addEventListener("blur",()=>finish(true));
+            if(e.key==="Escape") finish(false);
 
         });
 
-    }
+        input.addEventListener("blur",()=>finish(true));
+
+    });
+
+}
 
 
     // ========================================
@@ -139,6 +148,38 @@ function attachTaskEvents(wrapper){
 
     const card = wrapper.querySelector(".task-card");
 
+     card.addEventListener("click",(event)=>{
+
+    if(!event.ctrlKey && !event.metaKey){
+        return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const task = getTaskData(wrapper);
+
+    if(!task) return;
+
+    if(selectedTasks.has(task.id)){
+
+        selectedTasks.delete(task.id);
+        card.classList.remove("border-primary");
+
+    }else{
+
+        selectedTasks.add(task.id);
+        card.classList.add("border-primary");
+
+    }
+
+    updateBulkToolbar();
+
+});
+
+
+
+
     if(!card){
         return;
     }
@@ -157,6 +198,7 @@ function attachTaskEvents(wrapper){
         }, 100);
     });
 
+            enableInlineTitleEdit(wrapper);
 }
 
 
@@ -228,55 +270,251 @@ function setFormLoading(formId, loading){
 }
 
 // ============================================
-// DELETE TASK
+// UNDO DELETE
 // ============================================
+
+let pendingDelete = null;
+let pendingDeleteTimer = null;
+
+
+
+
+
+// ============================================
+// DELETE TASK WITH 5-SECOND UNDO
+// ============================================
+
+ pendingDelete = null;
 
 async function deleteTask(wrapper){
 
     const task = getTaskData(wrapper);
 
-    if(!task){
-        return;
+    if(!task) return;
+
+    const ok = await showConfirm(`Delete "${task.title}"?`);
+
+    if(!ok) return;
+
+    // Save original position
+    const parent = wrapper.parentElement;
+    const nextSibling = wrapper.nextElementSibling;
+
+    // Remove only from UI
+    wrapper.remove();
+    updateCounts();
+    applyKanbanFilters();
+
+    // Cancel previous pending delete
+    if(pendingDelete){
+        clearTimeout(pendingDelete.timer);
     }
 
-    const ok=await showConfirm(
-    `Delete "${task.title}"?`
-    );
+    pendingDelete = {
+        task,
+        wrapper,
+        parent,
+        nextSibling
+    };
 
-if(!ok) return;
+    // Show Undo toast
+    showUndoToast("Task deleted",()=>{
 
-    try{
+        clearTimeout(pendingDelete.timer);
 
-        const response = await fetch(`/kanban/task/${task.id}/delete`, {
-            method:"POST",
-            credentials:"same-origin"
-        });
-
-        if(!response.ok){
-            throw new Error(`HTTP ${response.status}`);
+        if(nextSibling){
+            parent.insertBefore(wrapper,nextSibling);
+        }else{
+            parent.appendChild(wrapper);
         }
 
-        const result = await response.json();
+        attachTaskEvents(wrapper);
 
-        if(!result.success){
-            showToast(result.message || "Failed to delete task.","danger");
-            return;
-        }
-
-        // REMOVE IMMEDIATELY
-        wrapper.remove();
-
-        // UPDATE COUNTS
         updateCounts();
+        applyKanbanFilters();
 
-        showToast("Task deleted.");
+        pendingDelete = null;
 
-    }catch(error){
-        console.error("Delete task error:", error);
-        showToast("Failed to delete task.","danger");
-    }
+        showToast("Task restored","success");
+
+    });
+
+    // Permanently delete after 5 seconds
+    pendingDelete.timer = setTimeout(async()=>{
+
+        try{
+
+            const response = await fetch(
+                `/kanban/task/${task.id}/delete`,
+                {
+                    method:"POST",
+                    credentials:"same-origin"
+                }
+            );
+
+            const result = await response.json();
+
+            if(result.success){
+                showToast("Task permanently deleted","success");
+            }else{
+                throw new Error(result.message);
+            }
+
+        }catch(error){
+
+            console.error(error);
+
+            // Restore if server delete fails
+            if(nextSibling){
+                parent.insertBefore(wrapper,nextSibling);
+            }else{
+                parent.appendChild(wrapper);
+            }
+
+            attachTaskEvents(wrapper);
+
+            updateCounts();
+            applyKanbanFilters();
+
+            showToast("Delete failed","danger");
+
+        }
+
+        pendingDelete = null;
+
+    },5000);
 
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ============================================
+// UNDO DELETE
+// ============================================
+
+function undoDelete(){
+
+    if(!pendingDelete) return;
+
+    clearTimeout(pendingDeleteTimer);
+
+    const {
+        wrapper,
+        parent,
+        nextSibling
+    } = pendingDelete;
+
+    if(nextSibling){
+        parent.insertBefore(wrapper,nextSibling);
+    }else{
+        parent.appendChild(wrapper);
+    }
+
+    updateCounts();
+    applyKanbanFilters();
+
+    pendingDelete = null;
+    pendingDeleteTimer = null;
+
+    showToast("Task restored.","success");
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 // ============================================
@@ -292,6 +530,8 @@ function createTaskWrapper(task){
 
     const initials = getAssigneeInitials(task.assignee_name);
     const priorityColor = getPriorityColor(task.priority);
+    const dueInfo =
+    getDueDateInfo(task.due_date);
 
     wrapper.innerHTML = `
 
@@ -347,14 +587,14 @@ function createTaskWrapper(task){
                         </span>
 
                         ${
-                            task.due_date
-                            ? `
-                                <span class="badge bg-light text-dark border due-date-badge">
-                                    📅 ${new Date(task.due_date).toLocaleDateString()}
-                                </span>
-                            `
-                            : ""
-                        }
+                            dueInfo
+                                 ? `
+                              <span class="badge ${dueInfo.className} due-date-badge">
+                                📅 ${dueInfo.label}
+                               </span>
+                                `
+                               : ""
+                               }
 
                     </div>
 
@@ -429,16 +669,24 @@ function updateTaskCard(wrapper, task){
 
     if(task.due_date){
 
-        const formattedDate = new Date(task.due_date).toLocaleDateString();
+        const dueInfo =
+    getDueDateInfo(task.due_date);
 
         if(dueBadge){
-            dueBadge.textContent = `📅 ${formattedDate}`;
+           dueBadge.className =
+             `badge ${dueInfo.className} due-date-badge`;
+
+             dueBadge.textContent =
+    `📅 ${dueInfo.label}`;
         }else{
 
             const span = document.createElement("span");
 
-            span.className = "badge bg-light text-dark border due-date-badge";
-            span.textContent = `📅 ${formattedDate}`;
+            span.className =
+    `badge ${dueInfo.className} due-date-badge`;
+
+span.textContent =
+    `📅 ${dueInfo.label}`;
 
             if(badge && badge.parentElement){
                 badge.parentElement.appendChild(span);
@@ -644,3 +892,120 @@ document.getElementById("saveTaskButton").addEventListener("click", async()=>{
     }
 
 });
+
+
+
+
+// ============================================
+// BULK TOOLBAR
+// ============================================
+
+function updateBulkToolbar(){
+
+    const toolbar = document.getElementById("bulkToolbar");
+
+    const count = document.getElementById("selectedCount");
+
+    if(!toolbar || !count) return;
+
+    count.textContent = selectedTasks.size;
+
+    toolbar.classList.toggle(
+        "d-none",
+        selectedTasks.size===0
+    );
+
+}
+
+
+// ============================================
+// BULK MOVE
+// ============================================
+
+[
+    ["bulkMoveTodo","TODO"],
+    ["bulkMoveProgress","IN_PROGRESS"],
+    ["bulkMoveReview","REVIEW"],
+    ["bulkMoveDone","DONE"]
+].forEach(([id,status])=>{
+
+    const button = document.getElementById(id);
+
+    if(!button) return;
+
+    button.addEventListener("click",async()=>{
+
+        const ids = [...selectedTasks];
+
+        for(const taskId of ids){
+
+            await fetch(`/kanban/task/${taskId}/move`,{
+
+                method:"POST",
+
+                headers:{
+                    "Content-Type":"application/json"
+                },
+
+                body:JSON.stringify({status})
+
+            });
+
+        }
+
+        selectedTasks.clear();
+
+        document
+            .querySelectorAll(".task-card.border-primary")
+            .forEach(card=>card.classList.remove("border-primary"));
+
+        updateBulkToolbar();
+
+        showToast("Tasks updated","success");
+
+    });
+
+});
+
+
+
+
+
+
+
+
+// ============================================
+// BULK DELETE
+// ============================================
+
+const bulkDelete = document.getElementById("bulkDelete");
+
+if(bulkDelete){
+
+    bulkDelete.addEventListener("click",async()=>{
+
+        const ok = await showConfirm(
+            `Delete ${selectedTasks.size} tasks?`
+        );
+
+        if(!ok) return;
+
+        for(const taskId of [...selectedTasks]){
+
+            await fetch(`/kanban/task/${taskId}/delete`,{
+
+                method:"POST"
+
+            });
+
+        }
+
+        selectedTasks.clear();
+
+        updateBulkToolbar();
+
+        showToast("Tasks deleted","success");
+
+    });
+
+}

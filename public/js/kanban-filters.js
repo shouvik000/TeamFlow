@@ -86,6 +86,28 @@ function applyKanbanFilters(){
 // FILTER EVENTS
 // ============================================
 
+function handleFilterChange(){
+
+    applyKanbanFilters();
+
+    saveKanbanPreferences({
+
+        search:
+            document.getElementById("kanbanSearch").value,
+
+        priority:
+            document.getElementById("priorityFilter").value,
+
+        assignee:
+            document.getElementById("assigneeFilter").value,
+
+        sort:
+            document.getElementById("sortTasks").value
+
+    });
+
+}
+
 [
     "kanbanSearch",
     "priorityFilter",
@@ -93,7 +115,38 @@ function applyKanbanFilters(){
     "sortTasks"
 ].forEach(id=>{
 
-    document.getElementById(id).addEventListener("input", applyKanbanFilters);
-    document.getElementById(id).addEventListener("change", applyKanbanFilters);
+    document.getElementById(id).addEventListener("input", handleFilterChange);
+    document.getElementById(id).addEventListener("change", handleFilterChange);
 
 });
+
+
+
+
+
+
+
+
+// ============================================
+// RESTORE FILTER PREFERENCES
+// ============================================
+
+const prefs = loadKanbanPreferences();
+
+if(prefs.search){
+    document.getElementById("kanbanSearch").value = prefs.search;
+}
+
+if(prefs.priority){
+    document.getElementById("priorityFilter").value = prefs.priority;
+}
+
+if(prefs.assignee){
+    document.getElementById("assigneeFilter").value = prefs.assignee;
+}
+
+if(prefs.sort){
+    document.getElementById("sortTasks").value = prefs.sort;
+}
+
+applyKanbanFilters();
