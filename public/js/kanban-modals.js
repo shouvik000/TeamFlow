@@ -1,12 +1,95 @@
-
-
 // ============================================
 // public/js/kanban-modals.js
 // Add / Edit modal logic, task card creation and updates
 // ============================================
 
-//BULK SELECTION
-const selectedTasks=new set();
+// BULK SELECTION
+const selectedTasks = new Set();
+
+// ============================================
+// BOOTSTRAP MODAL INSTANCES
+// ============================================
+
+const taskModalElement = document.getElementById("taskModal");
+const addTaskModalElement = document.getElementById("addTaskModal");
+
+const taskModal = taskModalElement
+    ? new bootstrap.Modal(taskModalElement)
+    : null;
+
+const addTaskModal = addTaskModalElement
+    ? new bootstrap.Modal(addTaskModalElement)
+    : null;
+
+
+// ============================================
+// INLINE TITLE EDIT BINDING
+// ============================================
+
+function bindInlineTitleEdit(wrapper, title){
+
+    if(!title || title.dataset.inlineBound) return;
+
+    title.dataset.inlineBound = "true";
+
+    title.addEventListener("dblclick", (event)=>{
+
+        event.stopPropagation();
+
+        const current = title.textContent.trim();
+
+        const input = document.createElement("input");
+
+        input.className = "form-control form-control-sm";
+        input.value = current;
+
+        title.replaceWith(input);
+
+        input.focus();
+        input.select();
+
+        let finished = false;
+
+        const finish = async(save)=>{
+
+            // Enter/Escape also trigger blur, so only run once
+            if(finished) return;
+            finished = true;
+
+            const newValue = input.value.trim();
+
+            const h6 = document.createElement("h6");
+
+            h6.className = "card-title fw-semibold mb-0 editable-title";
+            h6.tabIndex = 0;
+            h6.title = "Click to edit";
+            h6.textContent = (save && newValue) ? newValue : current;
+
+            input.replaceWith(h6);
+
+            // Rebind the new title element
+            bindInlineTitleEdit(wrapper, h6);
+
+            if(save && newValue && newValue !== current){
+                await saveInlineTitle(wrapper, newValue);
+            }
+
+        };
+
+        input.addEventListener("keydown", (e)=>{
+
+            if(e.key === "Enter") finish(true);
+
+            if(e.key === "Escape") finish(false);
+
+        });
+
+        input.addEventListener("blur", ()=>finish(true));
+
+    });
+
+}
+
 
 // ============================================
 // ATTACH EVENTS TO TASK
@@ -17,6 +100,12 @@ function attachTaskEvents(wrapper){
     // Prevent duplicate listeners on the same wrapper
     if(wrapper.dataset.eventsAttached) return;
     wrapper.dataset.eventsAttached = "true";
+
+    const card = wrapper.querySelector(".task-card");
+
+    if(!card){
+        return;
+    }
 
 
     // ========================================
@@ -46,65 +135,10 @@ function attachTaskEvents(wrapper){
 
 
     // ========================================
-// INLINE TITLE EDIT
-// ========================================
+    // INLINE TITLE EDIT
+    // ========================================
 
-const title = wrapper.querySelector(".editable-title");
-
-if(title && !title.dataset.inlineBound){
-
-    title.dataset.inlineBound = "true";
-
-    title.addEventListener("dblclick",(event)=>{
-
-        event.stopPropagation();
-
-        const current = title.textContent;
-
-        const input = document.createElement("input");
-
-        input.className = "form-control form-control-sm";
-        input.value = current;
-
-        title.replaceWith(input);
-
-        input.focus();
-        input.select();
-
-        const finish = async(save)=>{
-
-            const h6 = document.createElement("h6");
-
-            h6.className = "card-title fw-semibold mb-0 editable-title";
-            h6.textContent = save ? input.value.trim() : current;
-            h6.dataset.inlineBound = "true";
-
-            input.replaceWith(h6);
-
-            if(save && input.value.trim() && input.value.trim() !== current){
-
-                await saveInlineTitle(wrapper,input.value.trim());
-
-            }
-
-            // Rebind the new title element
-            attachTaskEvents(wrapper);
-
-        };
-
-        input.addEventListener("keydown",(e)=>{
-
-            if(e.key==="Enter") finish(true);
-
-            if(e.key==="Escape") finish(false);
-
-        });
-
-        input.addEventListener("blur",()=>finish(true));
-
-    });
-
-}
+    bindInlineTitleEdit(wrapper, wrapper.querySelector(".editable-title"));
 
 
     // ========================================
@@ -120,6 +154,11 @@ if(title && !title.dataset.inlineBound){
         const task = getTaskData(wrapper);
 
         if(!task){
+            return;
+        }
+
+        if(!taskModal){
+            console.error("Edit Task modal was not initialized.");
             return;
         }
 
@@ -143,46 +182,42 @@ if(title && !title.dataset.inlineBound){
 
 
     // ========================================
-    // DRAG
+    // BULK SELECT (Ctrl / Cmd + click)
     // ========================================
 
-    const card = wrapper.querySelector(".task-card");
+    card.addEventListener("click", (event)=>{
 
-     card.addEventListener("click",(event)=>{
+        if(!event.ctrlKey && !event.metaKey){
+            return;
+        }
 
-    if(!event.ctrlKey && !event.metaKey){
-        return;
-    }
+        event.preventDefault();
+        event.stopPropagation();
 
-    event.preventDefault();
-    event.stopPropagation();
+        const task = getTaskData(wrapper);
 
-    const task = getTaskData(wrapper);
+        if(!task) return;
 
-    if(!task) return;
+        if(selectedTasks.has(task.id)){
 
-    if(selectedTasks.has(task.id)){
+            selectedTasks.delete(task.id);
+            card.classList.remove("border-primary");
 
-        selectedTasks.delete(task.id);
-        card.classList.remove("border-primary");
+        }else{
 
-    }else{
+            selectedTasks.add(task.id);
+            card.classList.add("border-primary");
 
-        selectedTasks.add(task.id);
-        card.classList.add("border-primary");
+        }
 
-    }
+        updateBulkToolbar();
 
-    updateBulkToolbar();
-
-});
+    });
 
 
-
-
-    if(!card){
-        return;
-    }
+    // ========================================
+    // DRAG
+    // ========================================
 
     card.addEventListener("dragstart", ()=>{
         draggedCard = card;
@@ -198,7 +233,6 @@ if(title && !title.dataset.inlineBound){
         }, 100);
     });
 
-            enableInlineTitleEdit(wrapper);
 }
 
 
@@ -206,15 +240,15 @@ if(title && !title.dataset.inlineBound){
 // SAVE INLINE TITLE EDIT
 // ============================================
 
-async function saveInlineTitle(wrapper,newTitle){
+async function saveInlineTitle(wrapper, newTitle){
 
-    const task=getTaskData(wrapper);
+    const task = getTaskData(wrapper);
 
     if(!task || !newTitle.trim()) return;
 
     try{
 
-        const response=await fetch(
+        const response = await fetch(
             `/kanban/task/${task.id}/update`,
             {
                 method:"POST",
@@ -229,7 +263,7 @@ async function saveInlineTitle(wrapper,newTitle){
             }
         );
 
-        const result=await response.json();
+        const result = await response.json();
 
         if(!result.success){
 
@@ -238,7 +272,7 @@ async function saveInlineTitle(wrapper,newTitle){
 
         }
 
-        updateTaskCard(wrapper,result.task);
+        updateTaskCard(wrapper, result.task);
 
         showToast("Title updated");
 
@@ -269,22 +303,12 @@ function setFormLoading(formId, loading){
 
 }
 
-// ============================================
-// UNDO DELETE
-// ============================================
-
-let pendingDelete = null;
-let pendingDeleteTimer = null;
-
-
-
-
 
 // ============================================
 // DELETE TASK WITH 5-SECOND UNDO
 // ============================================
 
- pendingDelete = null;
+let pendingDelete = null;
 
 async function deleteTask(wrapper){
 
@@ -310,20 +334,23 @@ async function deleteTask(wrapper){
         clearTimeout(pendingDelete.timer);
     }
 
-    pendingDelete = {
+    const current = {
         task,
         wrapper,
         parent,
-        nextSibling
+        nextSibling,
+        timer: null
     };
 
-    // Show Undo toast
-    showUndoToast("Task deleted",()=>{
+    pendingDelete = current;
 
-        clearTimeout(pendingDelete.timer);
+    // Show Undo toast
+    showUndoToast("Task deleted", ()=>{
+
+        clearTimeout(current.timer);
 
         if(nextSibling){
-            parent.insertBefore(wrapper,nextSibling);
+            parent.insertBefore(wrapper, nextSibling);
         }else{
             parent.appendChild(wrapper);
         }
@@ -333,14 +360,16 @@ async function deleteTask(wrapper){
         updateCounts();
         applyKanbanFilters();
 
-        pendingDelete = null;
+        if(pendingDelete === current){
+            pendingDelete = null;
+        }
 
         showToast("Task restored","success");
 
     });
 
     // Permanently delete after 5 seconds
-    pendingDelete.timer = setTimeout(async()=>{
+    current.timer = setTimeout(async()=>{
 
         try{
 
@@ -366,7 +395,7 @@ async function deleteTask(wrapper){
 
             // Restore if server delete fails
             if(nextSibling){
-                parent.insertBefore(wrapper,nextSibling);
+                parent.insertBefore(wrapper, nextSibling);
             }else{
                 parent.appendChild(wrapper);
             }
@@ -380,141 +409,13 @@ async function deleteTask(wrapper){
 
         }
 
-        pendingDelete = null;
+        if(pendingDelete === current){
+            pendingDelete = null;
+        }
 
-    },5000);
+    }, 5000);
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// ============================================
-// UNDO DELETE
-// ============================================
-
-function undoDelete(){
-
-    if(!pendingDelete) return;
-
-    clearTimeout(pendingDeleteTimer);
-
-    const {
-        wrapper,
-        parent,
-        nextSibling
-    } = pendingDelete;
-
-    if(nextSibling){
-        parent.insertBefore(wrapper,nextSibling);
-    }else{
-        parent.appendChild(wrapper);
-    }
-
-    updateCounts();
-    applyKanbanFilters();
-
-    pendingDelete = null;
-    pendingDeleteTimer = null;
-
-    showToast("Task restored.","success");
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 // ============================================
@@ -530,8 +431,7 @@ function createTaskWrapper(task){
 
     const initials = getAssigneeInitials(task.assignee_name);
     const priorityColor = getPriorityColor(task.priority);
-    const dueInfo =
-    getDueDateInfo(task.due_date);
+    const dueInfo = getDueDateInfo(task.due_date);
 
     wrapper.innerHTML = `
 
@@ -549,7 +449,7 @@ function createTaskWrapper(task){
                         class="card-title fw-semibold mb-0 editable-title"
                         tabindex="0"
                         title="Click to edit">
-                         ${escapeHtml(task.title)}
+                        ${escapeHtml(task.title)}
                     </h6>
 
                     <div class="task-actions">
@@ -588,13 +488,13 @@ function createTaskWrapper(task){
 
                         ${
                             dueInfo
-                                 ? `
-                              <span class="badge ${dueInfo.className} due-date-badge">
-                                📅 ${dueInfo.label}
-                               </span>
+                                ? `
+                                <span class="badge ${dueInfo.className} due-date-badge">
+                                    📅 ${dueInfo.label}
+                                </span>
                                 `
-                               : ""
-                               }
+                                : ""
+                        }
 
                     </div>
 
@@ -669,27 +569,26 @@ function updateTaskCard(wrapper, task){
 
     if(task.due_date){
 
-        const dueInfo =
-    getDueDateInfo(task.due_date);
+        const dueInfo = getDueDateInfo(task.due_date);
 
-        if(dueBadge){
-           dueBadge.className =
-             `badge ${dueInfo.className} due-date-badge`;
+        if(dueInfo){
 
-             dueBadge.textContent =
-    `📅 ${dueInfo.label}`;
-        }else{
+            if(dueBadge){
 
-            const span = document.createElement("span");
+                dueBadge.className = `badge ${dueInfo.className} due-date-badge`;
+                dueBadge.textContent = `📅 ${dueInfo.label}`;
 
-            span.className =
-    `badge ${dueInfo.className} due-date-badge`;
+            }else{
 
-span.textContent =
-    `📅 ${dueInfo.label}`;
+                const span = document.createElement("span");
 
-            if(badge && badge.parentElement){
-                badge.parentElement.appendChild(span);
+                span.className = `badge ${dueInfo.className} due-date-badge`;
+                span.textContent = `📅 ${dueInfo.label}`;
+
+                if(badge && badge.parentElement){
+                    badge.parentElement.appendChild(span);
+                }
+
             }
 
         }
@@ -713,12 +612,26 @@ span.textContent =
 // ADD TASK BUTTONS (open the "New Task" modal)
 // ============================================
 
-document.querySelectorAll(".add-task-btn").forEach(button=>{
+document.querySelectorAll(".add-task-btn").forEach(button => {
 
-    button.addEventListener("click", ()=>{
+    button.addEventListener("click", () => {
 
-        document.getElementById("kanbanTaskForm").reset();
-        document.getElementById("newTaskStatus").value = button.dataset.status;
+        if(!addTaskModal){
+            console.error("Add Task modal was not initialized.");
+            return;
+        }
+
+        const form = document.getElementById("kanbanTaskForm");
+        const statusInput = document.getElementById("newTaskStatus");
+
+        if(!form || !statusInput){
+            console.error("Add Task form elements were not found.");
+            return;
+        }
+
+        form.reset();
+
+        statusInput.value = button.dataset.status || "TODO";
 
         addTaskModal.show();
 
@@ -731,7 +644,7 @@ document.querySelectorAll(".add-task-btn").forEach(button=>{
 // CREATE NEW TASK (form submit)
 // ============================================
 
-document.getElementById("kanbanTaskForm").addEventListener("submit", async(event)=>{
+document.getElementById("kanbanTaskForm")?.addEventListener("submit", async(event)=>{
 
     event.preventDefault();
 
@@ -745,14 +658,11 @@ document.getElementById("kanbanTaskForm").addEventListener("submit", async(event
         return;
     }
 
-   const createButton =
-    document.getElementById(
-        "createTaskButton"
-    );
+    const createButton = document.getElementById("createTaskButton");
 
-setFormLoading("kanbanTaskForm", true);
+    setFormLoading("kanbanTaskForm", true);
 
-createButton.textContent = "Creating...";
+    createButton.textContent = "Creating...";
 
     try{
 
@@ -760,7 +670,14 @@ createButton.textContent = "Creating...";
             method:"POST",
             headers:{ "Content-Type":"application/json" },
             credentials:"same-origin",
-            body: JSON.stringify({ title, description, priority, status })
+            body: JSON.stringify({
+                projectId: document.body.dataset.projectId
+                    || document.getElementById("newTaskProjectId")?.value,
+                title,
+                description,
+                priority,
+                status
+            })
         });
 
         if(!response.ok){
@@ -812,7 +729,7 @@ createButton.textContent = "Creating...";
 // SAVE TASK (edit modal)
 // ============================================
 
-document.getElementById("saveTaskButton").addEventListener("click", async()=>{
+document.getElementById("saveTaskButton")?.addEventListener("click", async()=>{
 
     const taskId = document.getElementById("editTaskId").value;
     const saveButton = document.getElementById("saveTaskButton");
@@ -887,13 +804,11 @@ document.getElementById("saveTaskButton").addEventListener("click", async()=>{
     }finally{
         setFormLoading("editTaskForm", false);
 
-         saveButton.disabled = false;
-         saveButton.textContent = "Save Changes";
+        saveButton.disabled = false;
+        saveButton.textContent = "Save Changes";
     }
 
 });
-
-
 
 
 // ============================================
@@ -912,8 +827,33 @@ function updateBulkToolbar(){
 
     toolbar.classList.toggle(
         "d-none",
-        selectedTasks.size===0
+        selectedTasks.size === 0
     );
+
+}
+
+
+// ============================================
+// BULK HELPERS
+// ============================================
+
+function findTaskWrapperById(taskId){
+
+    const card = document.querySelector(`[data-task-id="${taskId}"]`);
+
+    return card ? card.closest(".task-wrapper") : null;
+
+}
+
+function clearBulkSelection(){
+
+    selectedTasks.clear();
+
+    document
+        .querySelectorAll(".task-card.border-primary")
+        .forEach(card=>card.classList.remove("border-primary"));
+
+    updateBulkToolbar();
 
 }
 
@@ -927,51 +867,94 @@ function updateBulkToolbar(){
     ["bulkMoveProgress","IN_PROGRESS"],
     ["bulkMoveReview","REVIEW"],
     ["bulkMoveDone","DONE"]
-].forEach(([id,status])=>{
+].forEach(([id, status])=>{
 
     const button = document.getElementById(id);
 
     if(!button) return;
 
-    button.addEventListener("click",async()=>{
+    button.addEventListener("click", async()=>{
 
         const ids = [...selectedTasks];
 
+        if(ids.length === 0) return;
+
+        const targetColumn = document.querySelector(
+            `[data-status="${status}"] .task-list`
+        );
+
+        let failed = 0;
+
         for(const taskId of ids){
 
-            await fetch(`/kanban/task/${taskId}/move`,{
+            try{
 
-                method:"POST",
+                const response = await fetch(`/kanban/task/${taskId}/move`, {
 
-                headers:{
-                    "Content-Type":"application/json"
-                },
+                    method:"POST",
 
-                body:JSON.stringify({status})
+                    headers:{
+                        "Content-Type":"application/json"
+                    },
 
-            });
+                    credentials:"same-origin",
+
+                    body:JSON.stringify({ status })
+
+                });
+
+                if(!response.ok){
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const result = await response.json();
+
+                if(result.success === false){
+                    throw new Error(result.message || "Move failed");
+                }
+
+                // Update the UI only after the server confirms
+                const wrapper = findTaskWrapperById(taskId);
+
+                if(wrapper){
+
+                    try{
+                        const data = JSON.parse(wrapper.dataset.task);
+                        data.status = status;
+                        wrapper.dataset.task = JSON.stringify(data);
+                    }catch(e){
+                        console.error("Could not update task data:", e);
+                    }
+
+                    if(targetColumn){
+                        targetColumn.appendChild(wrapper);
+                    }
+
+                }
+
+            }catch(error){
+
+                console.error("Bulk move error:", error);
+                failed++;
+
+            }
 
         }
 
-        selectedTasks.clear();
+        clearBulkSelection();
 
-        document
-            .querySelectorAll(".task-card.border-primary")
-            .forEach(card=>card.classList.remove("border-primary"));
+        updateCounts();
+        applyKanbanFilters();
 
-        updateBulkToolbar();
-
-        showToast("Tasks updated","success");
+        if(failed > 0){
+            showToast(`${failed} task(s) could not be moved`,"danger");
+        }else{
+            showToast("Tasks updated","success");
+        }
 
     });
 
 });
-
-
-
-
-
-
 
 
 // ============================================
@@ -982,29 +965,68 @@ const bulkDelete = document.getElementById("bulkDelete");
 
 if(bulkDelete){
 
-    bulkDelete.addEventListener("click",async()=>{
+    bulkDelete.addEventListener("click", async()=>{
+
+        const ids = [...selectedTasks];
+
+        if(ids.length === 0) return;
 
         const ok = await showConfirm(
-            `Delete ${selectedTasks.size} tasks?`
+            `Delete ${ids.length} tasks?`
         );
 
         if(!ok) return;
 
-        for(const taskId of [...selectedTasks]){
+        let failed = 0;
 
-            await fetch(`/kanban/task/${taskId}/delete`,{
+        for(const taskId of ids){
 
-                method:"POST"
+            try{
 
-            });
+                const response = await fetch(`/kanban/task/${taskId}/delete`, {
+
+                    method:"POST",
+
+                    credentials:"same-origin"
+
+                });
+
+                if(!response.ok){
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const result = await response.json();
+
+                if(result.success === false){
+                    throw new Error(result.message || "Delete failed");
+                }
+
+                // Remove from the UI only after the server confirms
+                const wrapper = findTaskWrapperById(taskId);
+
+                if(wrapper){
+                    wrapper.remove();
+                }
+
+            }catch(error){
+
+                console.error("Bulk delete error:", error);
+                failed++;
+
+            }
 
         }
 
-        selectedTasks.clear();
+        clearBulkSelection();
 
-        updateBulkToolbar();
+        updateCounts();
+        applyKanbanFilters();
 
-        showToast("Tasks deleted","success");
+        if(failed > 0){
+            showToast(`${failed} task(s) could not be deleted`,"danger");
+        }else{
+            showToast("Tasks deleted","success");
+        }
 
     });
 

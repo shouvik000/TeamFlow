@@ -3,56 +3,6 @@ const activityService = require("../services/activityService");
 const socketService = require("../services/socketService");
 
 
-
-
-
-// ============================================
-// ACTIVITY LOGGER
-// ============================================
-
-async function logActivity({
-
-    organizationId,
-    projectId,
-    userId,
-    action,
-    details
-
-}){
-
-    await pool.query(
-        `
-        INSERT INTO activities
-        (
-            organization_id,
-            project_id,
-            user_id,
-            action,
-            details
-        )
-        VALUES($1,$2,$3,$4,$5)
-        `,
-        [
-            organizationId,
-            projectId,
-            userId,
-            action,
-            details
-        ]
-    );
-
-}
-
-
-
-
-
-
-
-
-
-
-
 // ============================================
 // GET KANBAN BOARD
 // ============================================
@@ -76,9 +26,7 @@ exports.getKanbanBoard = async (req, res) => {
         );
 
         if (projectResult.rows.length === 0) {
-
             return res.status(404).send("Project not found.");
-
         }
 
         const tasksResult = await pool.query(
@@ -116,40 +64,21 @@ exports.getKanbanBoard = async (req, res) => {
         );
 
         res.render("tasks/kanban", {
-
             user: req.session.user,
-
             organization: req.organization,
-
             project: projectResult.rows[0],
-
             members: membersResult.rows,
-
-            todoTasks: tasks.filter(
-                t => t.status === "TODO"
-            ),
-
-            inProgressTasks: tasks.filter(
-                t => t.status === "IN_PROGRESS"
-            ),
-
-            reviewTasks: tasks.filter(
-                t => t.status === "REVIEW"
-            ),
-
-            doneTasks: tasks.filter(
-                t => t.status === "DONE"
-            )
-
+            todoTasks: tasks.filter(t => t.status === "TODO"),
+            inProgressTasks: tasks.filter(t => t.status === "IN_PROGRESS"),
+            reviewTasks: tasks.filter(t => t.status === "REVIEW"),
+            doneTasks: tasks.filter(t => t.status === "DONE")
         });
 
     } catch (error) {
 
         console.error("Kanban board error:", error);
 
-        res.status(500).send(
-            "Failed to load Kanban board."
-        );
+        res.status(500).send("Failed to load Kanban board.");
 
     }
 
@@ -165,7 +94,6 @@ exports.createTask = async (req, res) => {
     try {
 
         const organizationId = req.organization.id;
-
         const userId = req.session.user.id;
 
         const {
@@ -178,15 +106,10 @@ exports.createTask = async (req, res) => {
         const projectId = Number(req.body.projectId);
 
         if (!title || !title.trim()) {
-
             return res.json({
-
                 success: false,
-
                 message: "Task title is required."
-
             });
-
         }
 
         // ----------------------------------------
@@ -205,15 +128,10 @@ exports.createTask = async (req, res) => {
         );
 
         if (projectCheck.rows.length === 0) {
-
             return res.status(403).json({
-
                 success: false,
-
                 message: "Project not found."
-
             });
-
         }
 
         // ----------------------------------------
@@ -253,19 +171,12 @@ exports.createTask = async (req, res) => {
         // ----------------------------------------
 
         await activityService.createActivityLog({
-
             organizationId,
-
             userId,
-
             action: "TASK_CREATED",
-
             entityType: "TASK",
-
             entityId: task.id,
-
-            details: `Created task "${task.title}"`
-
+            description: `Created task "${task.title}"`
         });
 
         // ----------------------------------------
@@ -275,11 +186,8 @@ exports.createTask = async (req, res) => {
         socketService.emitTaskCreated(task);
 
         res.json({
-
             success: true,
-
             task
-
         });
 
     } catch (error) {
@@ -287,11 +195,8 @@ exports.createTask = async (req, res) => {
         console.error("Create task error:", error);
 
         res.status(500).json({
-
             success: false,
-
             message: "Failed to create task."
-
         });
 
     }
@@ -308,31 +213,20 @@ exports.moveTask = async (req, res) => {
     try {
 
         const taskId = Number(req.params.taskId);
-
         const { status } = req.body;
 
         const validStatuses = [
-
             "TODO",
-
             "IN_PROGRESS",
-
             "REVIEW",
-
             "DONE"
-
         ];
 
         if (!validStatuses.includes(status)) {
-
             return res.json({
-
                 success: false,
-
                 message: "Invalid task status."
-
             });
-
         }
 
         // ----------------------------------------
@@ -354,29 +248,19 @@ exports.moveTask = async (req, res) => {
         );
 
         if (taskResult.rows.length === 0) {
-
             return res.json({
-
                 success: false,
-
                 message: "Task not found."
-
             });
-
         }
 
         const task = taskResult.rows[0];
 
         if (task.organization_id !== req.organization.id) {
-
             return res.status(403).json({
-
                 success: false,
-
                 message: "Unauthorized."
-
             });
-
         }
 
         // ----------------------------------------
@@ -411,11 +295,8 @@ exports.moveTask = async (req, res) => {
         );
 
         const updatedTask = {
-
             ...updatedTaskResult.rows[0],
-
             organization_id: task.organization_id
-
         };
 
         // ----------------------------------------
@@ -423,20 +304,14 @@ exports.moveTask = async (req, res) => {
         // ----------------------------------------
 
         await activityService.createActivityLog({
-
             organizationId: req.organization.id,
-
             userId: req.session.user.id,
-
             action: "TASK_UPDATED",
-
             entityType: "TASK",
-
-            entityId: taskId,
-
-            details: `Moved task to ${status}`
-
+            entityId: task.id,
+            description: `Task "${task.title}" moved to ${status}`
         });
+
         // ----------------------------------------
         // Real-time update
         // ----------------------------------------
@@ -444,11 +319,8 @@ exports.moveTask = async (req, res) => {
         socketService.emitTaskUpdated(updatedTask);
 
         res.json({
-
             success: true,
-
             task: updatedTask
-
         });
 
     } catch (error) {
@@ -456,11 +328,8 @@ exports.moveTask = async (req, res) => {
         console.error("Move task error:", error);
 
         res.status(500).json({
-
             success: false,
-
             message: "Failed to move task."
-
         });
 
     }
@@ -477,7 +346,6 @@ exports.updateTask = async (req, res) => {
     try {
 
         const taskId = Number(req.params.taskId);
-
         const organizationId = req.organization.id;
 
         const {
@@ -508,36 +376,26 @@ exports.updateTask = async (req, res) => {
         );
 
         if (taskResult.rows.length === 0) {
-
             return res.json({
-
                 success: false,
-
                 message: "Task not found."
-
             });
-
         }
 
         const task = taskResult.rows[0];
 
         if (task.organization_id !== organizationId) {
-
             return res.status(403).json({
-
                 success: false,
-
                 message: "Unauthorized."
-
             });
-
         }
 
         // ----------------------------------------
         // Update task
         // ----------------------------------------
 
-        const updated = await pool.query(
+        await pool.query(
             `
             UPDATE tasks
             SET
@@ -548,7 +406,6 @@ exports.updateTask = async (req, res) => {
                 due_date=$5,
                 assigned_to=$6
             WHERE id=$7
-            RETURNING *
             `,
             [
                 title,
@@ -580,11 +437,8 @@ exports.updateTask = async (req, res) => {
         );
 
         const updatedTask = {
-
             ...updatedTaskResult.rows[0],
-
             organization_id: organizationId
-
         };
 
         // ----------------------------------------
@@ -592,19 +446,12 @@ exports.updateTask = async (req, res) => {
         // ----------------------------------------
 
         await activityService.createActivityLog({
-
             organizationId,
-
             userId: req.session.user.id,
-
             action: "TASK_UPDATED",
-
             entityType: "TASK",
-
             entityId: taskId,
-
-            details: `Updated task "${title}"`
-
+            description: `Updated task "${title}"`
         });
 
         // ----------------------------------------
@@ -614,11 +461,8 @@ exports.updateTask = async (req, res) => {
         socketService.emitTaskUpdated(updatedTask);
 
         res.json({
-
             success: true,
-
             task: updatedTask
-
         });
 
     } catch (error) {
@@ -626,11 +470,8 @@ exports.updateTask = async (req, res) => {
         console.error("Update task error:", error);
 
         res.status(500).json({
-
             success: false,
-
             message: "Failed to update task."
-
         });
 
     }
@@ -669,29 +510,19 @@ exports.deleteTask = async (req, res) => {
         );
 
         if (taskResult.rows.length === 0) {
-
             return res.status(404).json({
-
                 success: false,
-
                 message: "Task not found."
-
             });
-
         }
 
         const task = taskResult.rows[0];
 
         if (task.organization_id !== req.organization.id) {
-
             return res.status(403).json({
-
                 success: false,
-
                 message: "Unauthorized."
-
             });
-
         }
 
         // ----------------------------------------
@@ -711,29 +542,22 @@ exports.deleteTask = async (req, res) => {
         // ----------------------------------------
 
         await activityService.createActivityLog({
-
             organizationId: req.organization.id,
-
             userId: req.session.user.id,
-
             action: "TASK_DELETED",
-
             entityType: "TASK",
-
             entityId: task.id,
+            description: `Deleted task "${task.title}"`
+        });
 
-            details: `Deleted task "${task.title}"`
-
-        });        // ----------------------------------------
+        // ----------------------------------------
         // Real-time update
         // ----------------------------------------
 
         socketService.emitTaskDeleted(task);
 
         res.json({
-
             success: true
-
         });
 
     } catch (error) {
@@ -741,11 +565,8 @@ exports.deleteTask = async (req, res) => {
         console.error("Delete task error:", error);
 
         res.status(500).json({
-
             success: false,
-
             message: "Failed to delete task."
-
         });
 
     }

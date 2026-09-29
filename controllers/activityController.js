@@ -87,6 +87,29 @@ exports.getActivities = async (req, res) => {
 
 
         // ========================================
+        // LOAD ORGANIZATION (for the view)
+        // ========================================
+
+        const organizationResult = await pool.query(
+            `
+            SELECT
+                id,
+                name
+            FROM organizations
+            WHERE id = $1
+            LIMIT 1
+            `,
+            [organizationId]
+        );
+
+        const organization =
+            organizationResult.rows[0] || {
+                id: organizationId,
+                name: "Organization"
+            };
+
+
+        // ========================================
         // QUERY PARAMETERS
         // ========================================
 
@@ -458,7 +481,11 @@ exports.getActivities = async (req, res) => {
                 LEFT JOIN tasks t
                     ON a.entity_type = 'TASK'
                     AND t.id = a.entity_id
-                    AND t.organization_id = a.organization_id
+
+                LEFT JOIN projects tp
+                    ON a.entity_type = 'TASK'
+                    AND tp.id = t.project_id
+                    AND tp.organization_id = a.organization_id
 
 
                 WHERE ${whereClause}
@@ -554,6 +581,8 @@ exports.getActivities = async (req, res) => {
             {
 
                 activities,
+
+                organization,
 
                 search,
 
@@ -664,3 +693,121 @@ function entityLabel(
         .join(" ");
 
 }
+
+
+// ============================================
+// GET RECENT ACTIVITIES
+// ============================================
+
+exports.getRecentActivities = async (req, res) => {
+
+    try {
+
+        const organizationId =
+            req.session.user.organizationId;
+
+        const limit = 10;
+
+        const result = await pool.query(
+            `
+            SELECT
+
+                a.id,
+                a.organization_id,
+                a.user_id,
+                a.action,
+                a.entity_type,
+                a.entity_id,
+                a.description,
+                a.created_at,
+
+                COALESCE(
+                    u.name,
+                    'System'
+                ) AS user_name,
+
+                COALESCE(
+                    u.email,
+                    ''
+                ) AS user_email,
+
+                CASE
+                    WHEN a.entity_type = 'PROJECT'
+                    THEN p.name
+
+                    WHEN a.entity_type = 'TASK'
+                    THEN t.title
+
+                    ELSE NULL
+                END AS entity_name
+
+            FROM activity_logs a
+
+            LEFT JOIN users u
+                ON u.id = a.user_id
+
+            LEFT JOIN projects p
+                ON a.entity_type = 'PROJECT'
+                AND p.id = a.entity_id
+                AND p.organization_id = a.organization_id
+
+            LEFT JOIN tasks t
+                ON a.entity_type = 'TASK'
+                AND t.id = a.entity_id
+
+            LEFT JOIN projects tp
+                ON a.entity_type = 'TASK'
+                AND tp.id = t.project_id
+                AND tp.organization_id = a.organization_id
+
+            WHERE a.organization_id = $1
+
+            ORDER BY
+                a.created_at DESC,
+                a.id DESC
+
+            LIMIT $2
+            `,
+            [
+                organizationId,
+                limit
+            ]
+        );
+
+        const activities = result.rows.map(
+            activity => ({
+                ...activity,
+
+                action_label:
+                    actionLabel(
+                        activity.action
+                    ),
+
+                entity_label:
+                    entityLabel(
+                        activity.entity_type
+                    )
+            })
+        );
+
+        res.json({
+            success: true,
+            activities
+        });
+
+    } catch (error) {
+
+        console.error(
+            "Get recent activities error:",
+            error
+        );
+
+        res.status(500).json({
+            success: false,
+            message: "Failed to load recent activities.",
+            activities: []
+        });
+
+    }
+
+};
