@@ -658,11 +658,15 @@ document.getElementById("kanbanTaskForm")?.addEventListener("submit", async(even
         return;
     }
 
-    const createButton = document.getElementById("createTaskButton");
+    const createButton = document.querySelector(
+        '#kanbanTaskForm button[type="submit"]'
+    );
 
     setFormLoading("kanbanTaskForm", true);
 
-    createButton.textContent = "Creating...";
+    if(createButton){
+        createButton.textContent = "Creating...";
+    }
 
     try{
 
@@ -717,9 +721,12 @@ document.getElementById("kanbanTaskForm")?.addEventListener("submit", async(even
         console.error("Create task error:", error);
         showToast("Failed to create task.","danger");
     }finally{
+
         setFormLoading("kanbanTaskForm", false);
 
-        createButton.textContent = "Create Task";
+        if(createButton){
+            createButton.textContent = "Create Task";
+        }
     }
 
 });
