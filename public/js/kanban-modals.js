@@ -263,7 +263,26 @@ async function saveInlineTitle(wrapper, newTitle){
             }
         );
 
-        const result = await response.json();
+       const responseText = await response.text();
+
+       console.log("CREATE TASK HTTP STATUS:", response.status);
+       console.log("CREATE TASK RAW RESPONSE:", responseText);
+
+       let result;
+
+     try {
+      result = JSON.parse(responseText);
+    } catch (parseError) {
+    console.error("CREATE TASK JSON PARSE ERROR:", parseError);
+    console.error("RAW SERVER RESPONSE:", responseText);
+
+    alert(
+        "Server returned invalid JSON.\n\n" +
+        responseText.substring(0, 1000)
+    );
+
+    return;
+    }
 
         if(!result.success){
 
@@ -644,92 +663,195 @@ document.querySelectorAll(".add-task-btn").forEach(button => {
 // CREATE NEW TASK (form submit)
 // ============================================
 
-document.getElementById("kanbanTaskForm")?.addEventListener("submit", async(event)=>{
+const kanbanTaskForm = document.getElementById("kanbanTaskForm");
 
-    event.preventDefault();
+if (!kanbanTaskForm) {
 
-    const status = document.getElementById("newTaskStatus").value;
-    const title = document.getElementById("newTaskTitle").value.trim();
-    const description = document.getElementById("newTaskDescription").value.trim();
-    const priority = document.getElementById("newTaskPriority").value;
+    console.error(" kanbanTaskForm was NOT found.");
 
-    if(!title){
-        showToast("Task title is required.","danger");
-        return;
-    }
+} else {
 
-    const createButton = document.querySelector(
-        '#kanbanTaskForm button[type="submit"]'
-    );
+    console.log(" kanbanTaskForm found. Submit handler attached.");
 
-    setFormLoading("kanbanTaskForm", true);
+    kanbanTaskForm.addEventListener("submit", async (event) => {
 
-    if(createButton){
-        createButton.textContent = "Creating...";
-    }
+        event.preventDefault();
 
-    try{
+        console.log(" CREATE TASK SUBMIT FIRED");
 
-        const response = await fetch("/kanban/task/create", {
-            method:"POST",
-            headers:{ "Content-Type":"application/json" },
-            credentials:"same-origin",
-            body: JSON.stringify({
-                projectId: document.body.dataset.projectId
-                    || document.getElementById("newTaskProjectId")?.value,
-                title,
-                description,
-                priority,
-                status
-            })
+        const status =
+            document.getElementById("newTaskStatus")?.value || "TODO";
+
+        const title =
+            document.getElementById("newTaskTitle")?.value.trim() || "";
+
+        const description =
+            document.getElementById("newTaskDescription")?.value.trim() || "";
+
+        const priority =
+            document.getElementById("newTaskPriority")?.value || "MEDIUM";
+
+        const projectId =
+            document.body.dataset.projectId;
+
+        console.log("Create task data:", {
+            projectId,
+            title,
+            description,
+            priority,
+            status
         });
 
-        if(!response.ok){
-            throw new Error(`HTTP ${response.status}`);
-        }
+        if (!projectId) {
 
-        const result = await response.json();
+            console.error(" Project ID is missing from <body>.");
 
-        if(!result.success){
-            showToast(result.message || "Failed to create task.","danger");
+            alert("Project ID is missing.");
+
             return;
         }
 
-        if(!document.querySelector(`[data-task-id="${result.task.id}"]`)){
+        if (!title) {
 
-            const wrapper = createTaskWrapper(result.task);
+            alert("Task title is required.");
 
-            const targetColumn = document.querySelector(
-                `[data-status="${result.task.status}"] .task-list`
+            return;
+        }
+
+        const createButton =
+            kanbanTaskForm.querySelector(
+                'button[type="submit"]'
             );
 
-            if(targetColumn){
-                targetColumn.prepend(wrapper);
+        try {
+
+            if (createButton) {
+                createButton.disabled = true;
+                createButton.textContent = "Creating...";
             }
 
-            applyKanbanFilters();
-            updateCounts();
+            console.log(` Sending POST /kanban/project/${Number(projectId)}/task`);
+
+            const response = await fetch(
+                `/kanban/project/${Number(projectId)}/task`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    credentials: "same-origin",
+                    body: JSON.stringify({
+                        projectId: Number(projectId),
+                        title,
+                        description,
+                        priority,
+                        status
+                    })
+                }
+            );
+
+            console.log(
+                " Create task HTTP status:",
+                response.status
+            );
+
+            const result = await response.json();
+
+            console.log(
+                " Create task response:",
+                result
+            );
+
+            if (!response.ok || !result.success) {
+
+                alert(
+                    result.message ||
+                    "Failed to create task."
+                );
+
+                return;
+            }
+
+            console.log(
+                " Task created:",
+                result.task
+            );
+
+            // Add the new task to the board
+            if (
+                result.task &&
+                !document.querySelector(
+                    `[data-task-id="${result.task.id}"]`
+                )
+            ) {
+
+                const wrapper =
+                    createTaskWrapper(result.task);
+
+                const targetColumn =
+                    document.querySelector(
+                        `[data-status="${result.task.status}"] .task-list`
+                    );
+
+                if (targetColumn) {
+
+                    targetColumn.prepend(wrapper);
+
+                } else {
+
+                    console.error(
+                        " Target Kanban column not found:",
+                        result.task.status
+                    );
+
+                }
+
+                updateCounts();
+                applyKanbanFilters();
+
+            }
+
+            if (addTaskModal) {
+                addTaskModal.hide();
+            }
+
+            kanbanTaskForm.reset();
+
+            if (typeof showToast === "function") {
+                showToast(
+                    "Task created successfully.",
+                    "success"
+                );
+            } else {
+                alert("Task created successfully.");
+            }
+
+        } catch (error) {
+
+            console.error(
+                " Create task error:",
+                error
+            );
+
+            alert(
+                "Failed to create task: " +
+                error.message
+            );
+
+        } finally {
+
+            if (createButton) {
+
+                createButton.disabled = false;
+                createButton.textContent = "Create Task";
+
+            }
 
         }
 
-        addTaskModal.hide();
-        document.getElementById("kanbanTaskForm").reset();
+    });
 
-        showToast("Task created successfully.");
-
-    }catch(error){
-        console.error("Create task error:", error);
-        showToast("Failed to create task.","danger");
-    }finally{
-
-        setFormLoading("kanbanTaskForm", false);
-
-        if(createButton){
-            createButton.textContent = "Create Task";
-        }
-    }
-
-});
+}
 
 
 // ============================================
