@@ -139,20 +139,20 @@ exports.createTask = async (req, res) => {
         // ----------------------------------------
 
         const result = await pool.query(
-            `
-            INSERT INTO tasks(
+            `INSERT INTO tasks(
                 project_id,
+                organization_id,
                 title,
                 description,
                 priority,
                 status,
                 created_by
             )
-            VALUES($1,$2,$3,$4,$5,$6)
-            RETURNING *
-            `,
+            VALUES($1,$2,$3,$4,$5,$6,$7)
+            RETURNING *`,
             [
                 projectId,
+                organizationId,
                 title.trim(),
                 description || null,
                 priority || "MEDIUM",
@@ -163,7 +163,7 @@ exports.createTask = async (req, res) => {
 
         const task = result.rows[0];
 
-        // Add organization_id for real-time updates
+        // Ensure organization_id is present for real-time updates
         task.organization_id = organizationId;
 
         // ----------------------------------------

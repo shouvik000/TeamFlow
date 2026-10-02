@@ -263,26 +263,26 @@ async function saveInlineTitle(wrapper, newTitle){
             }
         );
 
-       const responseText = await response.text();
+        const responseText = await response.text();
 
-       console.log("CREATE TASK HTTP STATUS:", response.status);
-       console.log("CREATE TASK RAW RESPONSE:", responseText);
+        console.log("INLINE TITLE HTTP STATUS:", response.status);
+        console.log("INLINE TITLE RAW RESPONSE:", responseText);
 
-       let result;
+        let result;
 
-     try {
-      result = JSON.parse(responseText);
-    } catch (parseError) {
-    console.error("CREATE TASK JSON PARSE ERROR:", parseError);
-    console.error("RAW SERVER RESPONSE:", responseText);
+        try {
+            result = JSON.parse(responseText);
+        } catch (parseError) {
+            console.error("INLINE TITLE JSON PARSE ERROR:", parseError);
+            console.error("RAW SERVER RESPONSE:", responseText);
 
-    alert(
-        "Server returned invalid JSON.\n\n" +
-        responseText.substring(0, 1000)
-    );
+            alert(
+                "Server returned invalid JSON.\n\n" +
+                responseText.substring(0, 1000)
+            );
 
-    return;
-    }
+            return;
+        }
 
         if(!result.success){
 
@@ -750,17 +750,26 @@ if (!kanbanTaskForm) {
                 }
             );
 
-            console.log(
-                " Create task HTTP status:",
-                response.status
-            );
+            // Read the body as text first so we can log exactly what the server sent
+            const responseText = await response.text();
 
-            const result = await response.json();
+            let result;
 
-            console.log(
-                " Create task response:",
-                result
-            );
+            try {
+                result = JSON.parse(responseText);
+            } catch (parseError) {
+                console.error("CREATE TASK JSON PARSE ERROR:", parseError);
+
+                // Goes to the catch block below, which shows the alert + toast
+                throw new Error(
+                    "Server returned invalid JSON (HTTP " + response.status + "):\n\n" +
+                    responseText.substring(0, 1000)
+                );
+            }
+
+            console.log("CREATE TASK HTTP STATUS:", response.status);
+            console.log("CREATE TASK RAW RESPONSE:", responseText);
+            console.log("CREATE TASK PARSED RESULT:", result);
 
             if (!response.ok || !result.success) {
 
@@ -785,26 +794,32 @@ if (!kanbanTaskForm) {
                 )
             ) {
 
-                const wrapper =
-                    createTaskWrapper(result.task);
+                const wrapper = createTaskWrapper(result.task);
 
-                const targetColumn =
-                    document.querySelector(
-                        `[data-status="${result.task.status}"] .task-list`
-                    );
+                const targetColumn = document.querySelector(
+                    `[data-status="${result.task.status}"] .task-list`
+                );
 
-                if (targetColumn) {
+                console.log("Created task:", result.task);
+                console.log("Target column:", targetColumn);
+                console.log("Task wrapper:", wrapper);
 
-                    targetColumn.prepend(wrapper);
-
-                } else {
-
+                if (!targetColumn) {
                     console.error(
-                        " Target Kanban column not found:",
+                        "Could not find Kanban column for status:",
                         result.task.status
                     );
 
+                    throw new Error(
+                        `Kanban column not found for status ${result.task.status}`
+                    );
                 }
+
+                if (!wrapper) {
+                    throw new Error("Could not create task card.");
+                }
+
+                targetColumn.prepend(wrapper);
 
                 updateCounts();
                 applyKanbanFilters();
@@ -828,15 +843,19 @@ if (!kanbanTaskForm) {
 
         } catch (error) {
 
-            console.error(
-                " Create task error:",
-                error
-            );
+            console.error("Create task error:", error);
 
             alert(
-                "Failed to create task: " +
+                "Create Task Error:\n\n" +
                 error.message
             );
+
+            if (typeof showToast === "function") {
+                showToast(
+                    "Failed to create task: " + error.message,
+                    "danger"
+                );
+            }
 
         } finally {
 

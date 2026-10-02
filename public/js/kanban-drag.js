@@ -1,4 +1,3 @@
-
 // ============================================
 // public/js/kanban-drag.js
 // Drag & Drop between board columns
@@ -6,7 +5,10 @@
 
 document.querySelectorAll(".board-column").forEach(column => {
 
+    // ============================================
     // DRAG OVER
+    // ============================================
+
     column.addEventListener("dragover", event => {
 
         event.preventDefault();
@@ -16,27 +18,44 @@ document.querySelectorAll(".board-column").forEach(column => {
     });
 
 
+    // ============================================
     // DRAG LEAVE
-    column.addEventListener("dragleave", () => {
+    // ============================================
 
-        column.classList.remove("drag-over");
+    column.addEventListener("dragleave", event => {
+
+        // Only remove when actually leaving the column
+        if (!column.contains(event.relatedTarget)) {
+            column.classList.remove("drag-over");
+        }
 
     });
 
 
+    // ============================================
     // DROP
-    column.addEventListener("drop", async () => {
+    // ============================================
+
+    column.addEventListener("drop", async event => {
+
+        event.preventDefault();
 
         column.classList.remove("drag-over");
 
 
-        // No dragged card
+        // ============================================
+        // CHECK DRAGGED CARD
+        // ============================================
+
         if (!draggedCard) {
             return;
         }
 
 
-        // Get task wrapper
+        // ============================================
+        // GET TASK WRAPPER
+        // ============================================
+
         const wrapper =
             draggedCard.closest(".task-wrapper");
 
@@ -45,33 +64,62 @@ document.querySelectorAll(".board-column").forEach(column => {
         }
 
 
-        // Get task data
+        // ============================================
+        // GET TASK DATA
+        // ============================================
+
         const task =
             getTaskData(wrapper);
 
         if (!task) {
+            console.error("Could not read task data.");
             return;
         }
 
 
-        // Store previous status
+        // ============================================
+        // STORE PREVIOUS STATUS
+        // ============================================
+
         const previousStatus =
             task.status;
 
 
-        // Get new status
+        // ============================================
+        // GET NEW STATUS
+        // ============================================
+
         const newStatus =
             column.dataset.status;
 
 
-        // Same column
+        // ============================================
+        // SAME COLUMN
+        // ============================================
+
         if (previousStatus === newStatus) {
             return;
         }
 
 
         // ============================================
-        // UPDATE UI FIRST
+        // TARGET TASK LIST
+        // ============================================
+
+        const targetColumn =
+            column.querySelector(".task-list");
+
+        if (!targetColumn) {
+            console.error(
+                "Task list not found for column:",
+                newStatus
+            );
+            return;
+        }
+
+
+        // ============================================
+        // UPDATE TASK DATA
         // ============================================
 
         task.status =
@@ -83,45 +131,52 @@ document.querySelectorAll(".board-column").forEach(column => {
 
 
         // ============================================
+        // MOVE CARD IN UI
+        // ============================================
+
+        targetColumn.appendChild(wrapper);
+
+
+        // ============================================
         // LOCK CARD WHILE SAVING
         // ============================================
 
-        draggedCard.classList.add("saving");
+        const savingCard = draggedCard;
+
+        if (savingCard) {
+            savingCard.classList.add("saving");
+        }
 
 
-        const targetColumn =
-            column.querySelector(".task-list");
+        // ============================================
+        // MOVE ANIMATION
+        // ============================================
 
+        if (wrapper.animate) {
 
-        if (targetColumn) {
-
-            targetColumn.appendChild(wrapper);
+            wrapper.animate(
+                [
+                    {
+                        transform: "scale(.96)",
+                        opacity: 0.6
+                    },
+                    {
+                        transform: "scale(1)",
+                        opacity: 1
+                    }
+                ],
+                {
+                    duration: 180
+                }
+            );
 
         }
 
 
         // ============================================
-        // SMALL MOVE ANIMATION
+        // UPDATE COUNTS
         // ============================================
 
-        wrapper.animate(
-            [
-                {
-                    transform: "scale(.96)",
-                    opacity: .6
-                },
-                {
-                    transform: "scale(1)",
-                    opacity: 1
-                }
-            ],
-            {
-                duration: 180
-            }
-        );
-
-
-        // Update column counts
         updateCounts();
 
 
@@ -135,7 +190,6 @@ document.querySelectorAll(".board-column").forEach(column => {
                 await fetch(
                     `/kanban/task/${task.id}/move`,
                     {
-
                         method: "POST",
 
                         headers: {
@@ -155,7 +209,10 @@ document.querySelectorAll(".board-column").forEach(column => {
                 );
 
 
-            // HTTP error
+            // ========================================
+            // HTTP ERROR
+            // ========================================
+
             if (!response.ok) {
 
                 throw new Error(
@@ -165,34 +222,40 @@ document.querySelectorAll(".board-column").forEach(column => {
             }
 
 
-            // Read response
+            // ========================================
+            // READ RESPONSE
+            // ========================================
+
             const result =
                 await response.json();
 
 
-            // Server returned error
+            // ========================================
+            // SERVER ERROR
+            // ========================================
+
             if (!result.success) {
 
                 throw new Error(
-                    result.message
+                    result.message ||
+                    "Task move failed."
                 );
 
             }
 
 
-            // ============================================
+            // ========================================
             // SUCCESS
-            // ============================================
+            // ========================================
+
+            if (savingCard) {
+                savingCard.classList.remove("saving");
+            }
+
 
             showToast(
                 "Task moved.",
                 "info"
-            );
-
-
-            // Remove saving state
-            draggedCard.classList.remove(
-                "saving"
             );
 
 
@@ -204,17 +267,19 @@ document.querySelectorAll(".board-column").forEach(column => {
             );
 
 
-            // ============================================
-            // ROLLBACK
-            // ============================================
+            // ========================================
+            // REMOVE SAVING STATE
+            // ========================================
 
-            // Remove saving state
-            draggedCard.classList.remove(
-                "saving"
-            );
+            if (savingCard) {
+                savingCard.classList.remove("saving");
+            }
 
 
-            // Restore previous status
+            // ========================================
+            // ROLLBACK TASK STATUS
+            // ========================================
+
             task.status =
                 previousStatus;
 
@@ -223,14 +288,20 @@ document.querySelectorAll(".board-column").forEach(column => {
                 JSON.stringify(task);
 
 
-            // Find previous column
+            // ========================================
+            // FIND PREVIOUS COLUMN
+            // ========================================
+
             const previousColumn =
                 document.querySelector(
                     `[data-status="${previousStatus}"] .task-list`
                 );
 
 
-            // Move card back
+            // ========================================
+            // MOVE CARD BACK
+            // ========================================
+
             if (previousColumn) {
 
                 previousColumn.appendChild(
@@ -240,11 +311,17 @@ document.querySelectorAll(".board-column").forEach(column => {
             }
 
 
-            // Update counts
+            // ========================================
+            // UPDATE COUNTS
+            // ========================================
+
             updateCounts();
 
 
-            // Show error
+            // ========================================
+            // SHOW ERROR
+            // ========================================
+
             showToast(
                 "Move failed.",
                 "danger"
@@ -257,6 +334,18 @@ document.querySelectorAll(".board-column").forEach(column => {
 });
 
 
+// ============================================
+// DRAG STATE
+// ============================================
+//
+// IMPORTANT:
+// dragstart / dragend are already attached to
+// individual cards by attachTaskEvents()
+// in kanban-modals.js.
+//
+// Therefore we ONLY keep the shared state here.
+// ============================================
+
 let draggedCard = null;
 let isDragging = false;
 
@@ -265,78 +354,33 @@ let isDragging = false;
 // AUTO SCROLL WHILE DRAGGING
 // ============================================
 
-function autoScrollBoard(event){
+function autoScrollBoard(event) {
 
-    if(!isDragging) return;
+    if (!isDragging) {
+        return;
+    }
+
 
     const edge = 120;
     const speed = 18;
 
     const x = event.clientX;
 
-    if(x > window.innerWidth - edge){
+
+    if (x > window.innerWidth - edge) {
 
         window.scrollBy({
-            left:speed,
-            behavior:"auto"
+            left: speed,
+            behavior: "auto"
         });
 
-    }else if(x < edge){
+    } else if (x < edge) {
 
         window.scrollBy({
-            left:-speed,
-            behavior:"auto"
+            left: -speed,
+            behavior: "auto"
         });
 
     }
 
 }
-
-
-card.addEventListener("dragstart",()=>{
-
-    draggedCard = card;
-    if(selectedTasks.size>1){
-
-    draggedCard = null;
-    return;
-
-}
-
-isDragging = true;
-
-    card.classList.add("dragging");
-
-    document.addEventListener(
-        "dragover",
-        autoScrollBoard
-    );
-
-});
-
-
-
-
-
-
-
-
-card.addEventListener("dragend",()=>{
-
-    card.classList.remove("dragging");
-
-    document.removeEventListener(
-        "dragover",
-        autoScrollBoard
-    );
-
-    setTimeout(()=>{
-        isDragging = false;
-        draggedCard = null;
-    },100);
-
-});
-
-
-
-

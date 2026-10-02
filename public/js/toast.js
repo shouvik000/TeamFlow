@@ -1,27 +1,44 @@
-
-
 // public/js/toast.js
 
-window.showToast = function(message,type="success"){
+// ============================================
+// STANDARD TOAST
+// ============================================
 
-    const colors={
-        success:"bg-success",
-        danger:"bg-danger",
-        warning:"bg-warning text-dark",
-        info:"bg-primary"
+window.showToast = function (message, type = "success") {
+
+    const colors = {
+        success: "bg-success",
+        danger: "bg-danger",
+        warning: "bg-warning text-dark",
+        info: "bg-primary"
     };
 
-    const container=document.getElementById("toastContainer");
+    let container = document.getElementById("toastContainer");
 
-    const toast=document.createElement("div");
+    // Create toast container if it does not exist
+    if (!container) {
 
-    toast.className=`toast align-items-center text-white ${colors[type]} border-0`;
+        container = document.createElement("div");
 
-    toast.setAttribute("role","alert");
+        container.id = "toastContainer";
+        container.className = "toast-container position-fixed top-0 end-0 p-3";
 
-    toast.innerHTML=`
+        container.style.zIndex = "2000";
+
+        document.body.appendChild(container);
+    }
+
+    const toast = document.createElement("div");
+
+    toast.className =
+        `toast align-items-center text-white ${colors[type] || colors.info} border-0`;
+
+    toast.setAttribute("role", "alert");
+
+    toast.innerHTML = `
         <div class="d-flex">
             <div class="toast-body">${message}</div>
+
             <button
                 type="button"
                 class="btn-close btn-close-white me-2 m-auto"
@@ -32,46 +49,27 @@ window.showToast = function(message,type="success"){
 
     container.appendChild(toast);
 
-    const bsToast=new bootstrap.Toast(toast,{
-        delay:3000
+    const bsToast = new bootstrap.Toast(toast, {
+        delay: 3000
     });
 
-    bsToast.show();
-
-    toast.addEventListener("hidden.bs.toast",()=>{
+    toast.addEventListener("hidden.bs.toast", () => {
         toast.remove();
     });
 
+    bsToast.show();
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 // ============================================
 // TOAST WITH UNDO BUTTON
 // ============================================
 
-window.showUndoToast = function(message,onUndo){
+window.showUndoToast = function (message, onUndo) {
 
     let container = document.getElementById("toastContainer");
 
-    if(!container){
+    if (!container) {
 
         container = document.createElement("div");
         container.id = "toastContainer";
@@ -101,16 +99,16 @@ window.showUndoToast = function(message,onUndo){
 
     container.appendChild(toast);
 
-    const bsToast = new bootstrap.Toast(toast,{delay:5000});
+    const bsToast = new bootstrap.Toast(toast, { delay: 5000 });
 
-    toast.querySelector(".undo-btn").addEventListener("click",()=>{
+    toast.querySelector(".undo-btn").addEventListener("click", () => {
 
         bsToast.hide();
         onUndo();
 
     });
 
-    toast.addEventListener("hidden.bs.toast",()=>toast.remove());
+    toast.addEventListener("hidden.bs.toast", () => toast.remove());
 
     bsToast.show();
 
