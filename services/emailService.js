@@ -49,7 +49,7 @@ exports.verifyEmailTransport = async () => {
         await transporter.verify();
 
         console.log(
-            "📧 Email SMTP connection verified"
+            " Email SMTP connection verified"
         );
 
         return true;
@@ -57,7 +57,7 @@ exports.verifyEmailTransport = async () => {
     } catch (error) {
 
         console.error(
-            "❌ Email SMTP verification failed:",
+            " Email SMTP verification failed:",
             error.message
         );
 
