@@ -56,6 +56,9 @@ const subscriptionRoutes =
 const notificationRoutes =
     require("./routes/notificationRoutes");
 
+    const googleAuthRoutes = 
+         require("./routes/googleAuthRoutes");
+
 
 // ============================================================
 // API ROUTES
@@ -433,6 +436,10 @@ app.locals.buildQueryString =
 app.use(
     securityHeaders
 );
+
+
+//GoogleAuth routes
+app.use("/auth", googleAuthRoutes);
 
 
 // ============================================================
